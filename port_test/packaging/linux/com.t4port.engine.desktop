@@ -1,0 +1,17 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=T4 Port — World at War
+Name[pt_BR]=T4 Port — World at War
+GenericName=Game engine port
+GenericName[pt_BR]=Porte do motor do jogo
+Comment=Porte nativo do motor de Call of Duty: World at War (T4)
+Comment[pt_BR]=Porte nativo do motor de Call of Duty: World at War (T4)
+Exec=/home/davi/Plutonium/port/packaging/linux/t4port.sh
+Icon=com.t4port.engine
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=call of duty;waw;world at war;zombies;t4;plutonium;
+StartupNotify=true
+X-GNOME-UsesNotifications=false

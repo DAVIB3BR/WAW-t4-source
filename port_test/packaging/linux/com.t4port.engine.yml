@@ -1,0 +1,101 @@
+# Manifesto Flatpak do t4port (porte nativo de CoD: World at War / motor T4)
+#
+# Empacota: SDL2 (fonte verificada por sha256) + motor nativo + launcher + os
+# 8,2 GB de dados do jogo (modulo "gamedata").
+#
+# Build:
+#   packaging/linux/build-flatpak.sh            # build
+#   packaging/linux/build-flatpak.sh --install  # build + instalar (usuario)
+#
+# Espaco necessario: ~30 GB no pico (fonte + /app + repositorio de exportacao).
+
+app-id: com.t4port.engine
+runtime: org.freedesktop.Platform
+runtime-version: "25.08"
+sdk: org.freedesktop.Sdk
+command: t4port.sh
+
+finish-args:
+  - --share=network          # multiplayer / atualizacoes
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri             # OpenGL/DRM
+  - --socket=pulseaudio
+  - --talk-name=org.freedesktop.Notifications
+  # ponte host do play: sem wine no sandbox, o launcher delega o start do
+  # jogo pro launcher do HOST (T4_HOST_LAUNCHER), na sessao do usuario
+  - --talk-name=org.freedesktop.Flatpak
+  - --env=T4_HOST_LAUNCHER=/home/davi/Plutonium/port/packaging/linux/t4port.sh
+  - --env=T4_GAME_DIR=/app/share/t4port/game
+
+modules:
+  # ---- SDL2: os runtimes atuais so trazem SDL3; o motor usa binding dinamico
+  #      em SDL2, entao compilamos aqui a partir da fonte oficial.
+  #      Obs1: buildsystem "simple" porque o CMake do SDL2 recusa build com
+  #            diretorio IDENTICO ao fonte (subdiretorio funciona).
+  #      Obs2: o diretorio de build precisa ficar DENTRO do diretor-fonte:
+  #            fora dele nao persiste entre comandos do flatpak-builder.
+  - name: sdl2
+    buildsystem: simple
+    build-commands:
+      - cmake -S . -B build-out -G Ninja
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app
+        -DCMAKE_INSTALL_LIBDIR=lib
+        -DSDL_SHARED=ON
+        -DSDL_STATIC=OFF
+        -DSDL_TEST=OFF
+        -DSDL_TESTS=OFF
+      - cmake --build build-out -j $FLATPAK_BUILDER_N_JOBS
+      - cmake --install build-out
+      - rm -rf build-out
+    sources:
+      - type: archive
+        url: https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz
+        sha256: 5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165
+
+  # ---- motor nativo do porte
+  - name: t4port
+    buildsystem: simple
+    build-commands:
+      - cmake -S . -B .flatpak-build -G Ninja
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/app
+      - cmake --build .flatpak-build -j $FLATPAK_BUILDER_N_JOBS
+      - cmake --install .flatpak-build
+      # BUG CORRIGIDO: a fonte do .desktop agora aponta para o t4port.sh
+      # absoluto (para duplo-clique fora do Flatpak); dentro do sandbox o
+      # Exec volta a ser relativo, senao o export vira --command=/host/caminho
+      - sed -i 's|^Exec=.*|Exec=t4port.sh|'
+        /app/share/applications/com.t4port.engine.desktop
+      - install -Dm644 README.md /app/share/doc/t4port/README.md
+      - sh -c 'command -v desktop-file-validate >/dev/null && desktop-file-validate
+        /app/share/applications/com.t4port.engine.desktop || true'
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build
+          - build-macos
+          - dist
+          - .flatpak-build
+          - .flatpak-repo
+          - .flatpak-builder
+          - .git
+          - __pycache__
+          - "*.o"
+
+  # ---- dados do jogo (8,2 GB) embutidos no pacote
+  - name: gamedata
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/t4port/game
+      - cp -a . /app/share/t4port/game/
+      # mods/ e conteudo do usuario (criado por "t4port mods unpack"): nao
+      # embarca - nomes de arquivo ali vem do usuario e quebram o build.
+      - rm -rf /app/share/t4port/game/mods
+      - du -sh /app/share/t4port/game
+    sources:
+      - type: dir
+        path: ../../../pluto_t4_full_game
