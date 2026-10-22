@@ -229,11 +229,11 @@ static int seq_build(T4ZW *w, const T4ZStruct *st, struct SeqEnt **out, int *out
 {
     const T4ZOrderEnt *reord = reord_lookup(st->name);
     const T4ZOrderEnt *order = order_lookup(st->name);
-    struct SeqEnt *seq;
+    struct SeqEnt *seq = NULL;
     int n = 0, i, j, seen;
     (void)w;
     seq = (struct SeqEnt *)calloc((size_t)st->nfields + 8, sizeof(*seq));
-    if (!seq) return failf(w, "sem memoria (seq)");
+    if (!seq) return failf(w, "out of memory (seq)");
     if (reord && reord->anchor && reord->n > 0) {
         const char *anchor = reord->names[0];
         for (i = 0; i < st->nfields; i++) {
@@ -246,7 +246,7 @@ static int seq_build(T4ZW *w, const T4ZStruct *st, struct SeqEnt **out, int *out
         }
         for (j = 1; j < reord->n; j++) {
             int fi = fld_idx(st, reord->names[j]);
-            if (fi < 0) { free(seq); return failf(w, "reorder: campo %s.%s ausente", st->name, reord->names[j]); }
+            if (fi < 0) { free(seq); return failf(w, "reorder: missing field %s.%s", st->name, reord->names[j]); }
             seq[n].embed = 0;
             seq[n].f = fi;
             n++;
@@ -263,7 +263,7 @@ static int seq_build(T4ZW *w, const T4ZStruct *st, struct SeqEnt **out, int *out
     } else if (reord) {
         for (j = 0; j < reord->n; j++) {
             int fi = fld_idx(st, reord->names[j]);
-            if (fi < 0) { free(seq); return failf(w, "reorder: campo %s.%s ausente", st->name, reord->names[j]); }
+            if (fi < 0) { free(seq); return failf(w, "reorder: missing field %s.%s", st->name, reord->names[j]); }
             seq[n].embed = 0;
             seq[n].f = fi;
             n++;
@@ -323,7 +323,7 @@ static int seq_build(T4ZW *w, const T4ZStruct *st, struct SeqEnt **out, int *out
 static const struct SeqEnt *seq_get(T4ZW *w, const T4ZStruct *st, int *outn)
 {
     int i;
-    struct SeqEnt *seq;
+    struct SeqEnt *seq = NULL;
     for (i = 0; i < g_nseq; i++)
         if (g_seqcache[i].st == st) {
             *outn = g_seqcache[i].n;
@@ -655,7 +655,7 @@ static long ecount(T4ZW *w, const char *expr)
     e.err = 0;
     v = ev_add(w, &e);
     if (e.err) {
-        failf(w, "count '%s' invalido", expr);
+        failf(w, "invalid count '%s'", expr);
         return -1;
     }
     return (long)v;
@@ -682,7 +682,7 @@ static const T4ZSpec *choose_spec(T4ZW *w, const T4ZSpec *sp)
 {
     int64_t v = ecount(w, sp->e);
     int op = sp->a;
-    if (v < 0 && !w->err[0]) { failf(w, "choose '%s' invalido", sp->e); return NULL; }
+    if (v < 0 && !w->err[0]) { failf(w, "invalid choose '%s'", sp->e); return NULL; }
     /* ops *_S: a anotacao py compara com _s32 (bit31 = signed); ecount le
      * unsigned, entao refaz o cast aqui antes do comparador. */
     if (op >= C_LT_S && op <= C_GE_S) {
@@ -700,7 +700,7 @@ static const T4ZSpec *choisk_spec(T4ZW *w, const T4ZSpec *sp)
      * inicializado).  Sem o fallback em .a o loop nunca rodava e todo
      * choose caia no sub (K_SKIP), pulando pointees como BYTES(16). */
     int n = sp->nents ? sp->nents : sp->a;
-    if (v < 0 && !w->err[0]) { failf(w, "choose '%s' invalido", sp->e); return NULL; }
+    if (v < 0 && !w->err[0]) { failf(w, "invalid choose '%s'", sp->e); return NULL; }
     for (i = 0; i < n; i++)
         if ((int64_t)sp->ents[i].key == v)
             return sp->ents[i].spec;
@@ -796,7 +796,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         long n = ecount(w, sp->e);
         if (n < 0) return -1;
         if (w->pos + (size_t)n > w->len)
-            return failf(w, "bytes '%s' fora do payload (%zu+%ld > %zu)",
+            return failf(w, "bytes '%s' outside the payload (%zu+%ld > %zu)",
                          sp->e, w->pos, n, w->len);
         w->pos += (size_t)n;
         return 0;
@@ -805,7 +805,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         long n = ecount(w, sp->e);
         if (n < 0) return -1;
         if (w->pos + 2 * (size_t)n > w->len)
-            return failf(w, "u16 '%s' fora do payload", sp->e);
+            return failf(w, "u16 '%s' outside the payload", sp->e);
         if (w->atype == 17 && sname && f &&
             !strcmp(sname, "GfxWorld") && !strcmp(f->name, "indices")) {
             w->g_idx = w->d + w->pos;
@@ -818,12 +818,12 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         const T4ZStruct *es = t4z_struct(sp->e);
         long n = spec_cnt(w, sp);
         size_t start, i;
-        if (!es) return failf(w, "struct %s desconhecida", sp->e);
+        if (!es) return failf(w, "unknown struct %s", sp->e);
         if (n < 0) return -1;
         if (inline_data) {
             start = w->pos;
             if (start + es->size * (size_t)n > w->len)
-                return failf(w, "array %s[%ld] fora do payload", sp->e, n);
+                return failf(w, "array %s[%ld] outside the payload", sp->e, n);
             w->pos = start + es->size * (size_t)n;
         } else {
             start = poff >= 0 ? (size_t)poff : w->pos;
@@ -845,7 +845,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         if (n < 0) return -1;
         start = inline_data ? w->pos : (poff >= 0 ? (size_t)poff : w->pos);
         if (start + 4 * (size_t)n > w->len)
-            return failf(w, "slots de union[%ld] fora do payload", n);
+            return failf(w, "slots de union[%ld] outside the payload", n);
         w->pos = start + 4 * (size_t)n;
         for (i = 0; i < (size_t)n; i++) {
             uint32_t p = rd32(w->d + start + 4 * i);
@@ -868,21 +868,21 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         long n = spec_cnt(w, sp);
         long extra;
         long i;
-        if (!es) return failf(w, "struct %s desconhecida", sp->e);
+        if (!es) return failf(w, "unknown struct %s", sp->e);
         if (n < 0) return -1;
         for (i = 0; i < n; i++)
             if (load_alloc(w, es->name) != 0) return -1;
         extra = ecount(w, sp->e2);
         if (extra < 0) return -1;
         if (w->pos + (size_t)extra > w->len)
-            return failf(w, "struct_extra fora do payload");
+            return failf(w, "struct_extra outside the payload");
         w->pos += (size_t)extra;
         return 0;
     }
     case K_EARR: {
         const T4ZStruct *es = t4z_struct(sp->e);
         T4ZSpec tmp;
-        if (!es) return failf(w, "struct %s desconhecida", sp->e);
+        if (!es) return failf(w, "unknown struct %s", sp->e);
         memset(&tmp, 0, sizeof(tmp));
         tmp.kind = K_STRUCT;
         tmp.e = sp->e;
@@ -895,7 +895,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         long i;
         if (cnt < 0) return -1;
         if (w->pos + 4 * (size_t)cnt > w->len)
-            return failf(w, "earrptr fora do payload");
+            return failf(w, "earrptr outside the payload");
         for (i = 0; i < cnt; i++) {
             uint32_t p = rd32(w->d + w->pos + 4 * i);
             if (is_following(p)) {
@@ -915,7 +915,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         size_t abase;
         if (cnt < 0) return -1;
         if (w->pos + 4 * (size_t)cnt > w->len)
-            return failf(w, "ptrarr fora do payload");
+            return failf(w, "ptrarr outside the payload");
         /* o array inteiro de ponteiros e consumido ANTES de seguir qualquer
          * pointee (fftool.py 'ptrarr': pos += 4*cnt, entao load_alloc dos
          * elementos).  Seguir antes lia o blob por cima do proprio array. */
@@ -941,9 +941,9 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         const T4ZStruct *ut = union_struct(f->type);
         const T4ZField *mf = NULL;
         int inline_data2;
-        if (!ut) return failf(w, "unionmember em %s.%s nao-union", sname, f->name);
+        if (!ut) return failf(w, "unionmember in %s.%s is not a union", sname, f->name);
         if (um_member(ut, sp->name, &mf) != 0 || !mf)
-            return failf(w, "union member %s nao encontrado em %s", sp->name, f->type);
+            return failf(w, "union member %s not found in %s", sp->name, f->type);
         if (mf->ptr && !is_following(uv)) return 0;
         if (!mf->ptr && is_union_type(mf->type) && !is_following(uv)) return 0;
         inline_data2 = (mf->ptr || is_union_type(mf->type)) ? 1 : 0;
@@ -968,7 +968,7 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         if (n < 0) return -1;
         pbase = w->pos;
         if (pbase + 4 * (size_t)n > w->len)
-            return failf(w, "uarr fora do payload");
+            return failf(w, "uarr outside the payload");
         w->pos = pbase + 4 * (size_t)n;
         for (i = 0; i < n; i++) {
             uint32_t p = rd32(w->d + pbase + 4 * i);
@@ -990,9 +990,9 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
         size_t pbase = poff >= 0 ? (size_t)poff : w->pos;
         int n = sp->a > 0 ? sp->a : 2;
         int i;
-        if (!es) return failf(w, "struct %s desconhecida", sp->e);
+        if (!es) return failf(w, "unknown struct %s", sp->e);
         if (pbase + 4 * (size_t)n > w->len)
-            return failf(w, "parr2 fora do payload");
+            return failf(w, "parr2 outside the payload");
         for (i = 0; i < n; i++) {
             uint32_t p = rd32(w->d + pbase + 4 * i);
             if (is_following(p))
@@ -1002,14 +1002,14 @@ static int pointee(T4ZW *w, const char *sname, const T4ZField *f,
     }
     case K_INLINE: {
         const T4ZStruct *is = t4z_struct(sp->e);
-        if (!is) return failf(w, "struct %s desconhecida", sp->e);
+        if (!is) return failf(w, "unknown struct %s", sp->e);
         return proc(w, is, w->d);
     }
     case K_BAD:
-        return failf(w, "spec in suportada (%s.%s: %s)", sname, f->name,
+        return failf(w, "unsupported spec (%s.%s: %s)", sname, f->name,
                      sp->name ? sp->name : "?");
     default:
-        return failf(w, "spec %d inesperada em %s.%s", sp->kind, sname, f->name);
+        return failf(w, "unexpected spec %d in %s.%s", sp->kind, sname, f->name);
     }
 }
 
@@ -1018,10 +1018,10 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
 
 static int proc(T4ZW *w, const T4ZStruct *st, const uint8_t *base)
 {
-    const struct SeqEnt *seq;
+    const struct SeqEnt *seq = NULL;
     int seqn = 0, k;
     if (w->nvstack >= (int)(sizeof(w->vstack) / sizeof(w->vstack[0])))
-        return failf(w, "pilha de structs estourou em %s", st->name);
+        return failf(w, "struct stack overflow at %s", st->name);
     seq = seq_get(w, st, &seqn);
     if (!seq) return -1;
     w->vstack[w->nvstack].st = st;
@@ -1034,7 +1034,7 @@ static int proc(T4ZW *w, const T4ZStruct *st, const uint8_t *base)
             const T4ZStruct *ps = t4z_struct(pf->type);
             if (!ps) {
                 w->nvstack--;
-                return failf(w, "embed %s.%s: struct %s ausente", st->name,
+                return failf(w, "embed %s.%s: missing struct %s", st->name,
                              pf->name, pf->type ? pf->type : "?");
             }
             rc = proc(w, ps, base + pf->off);
@@ -1083,7 +1083,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             long n = ecount(w, spec->e);
             if (n < 0) return -1;
             if (w->pos + (size_t)n > w->len)
-                return failf(w, "%s.%s bytes fora do payload", st->name, f->name);
+                return failf(w, "%s.%s bytes outside the payload", st->name, f->name);
             w->pos += (size_t)n;
             return 0;
         }
@@ -1092,7 +1092,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             long n;
             int sel;
             if (!ident_lookup(w, spec->e, 0, 0, &fv))
-                return failf(w, "%s.%s dynidx: campo %s ausente", st->name,
+                return failf(w, "%s.%s dynidx: missing field %s", st->name,
                              f->name, spec->e);
             sel = cmp_eval(spec->a, fv, spec->b);
             n = ecount(w, spec->e2);
@@ -1121,7 +1121,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             }
             if (spec->kind == K_INLINE) {
                 const T4ZStruct *is = t4z_struct(spec->e);
-                if (!is) return failf(w, "struct %s desconhecida", spec->e);
+                if (!is) return failf(w, "unknown struct %s", spec->e);
                 return proc(w, is, base + f->off);
             }
             if (spec->kind == K_DYNFR) {
@@ -1131,7 +1131,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
                     long n;
                     int sel;
                     if (!ident_lookup(w, spec->e, 0, 0, &fv))
-                        return failf(w, "%s.%s dynframes: campo %s ausente",
+                        return failf(w, "%s.%s dynframes: missing field %s",
                                      st->name, f->name, spec->e);
                     sel = cmp_eval(spec->a, fv, spec->b);
                     n = ecount(w, spec->e2);
@@ -1165,9 +1165,9 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             }
             {
                 const T4ZField *mf = NULL;
-                if (!ut) return failf(w, "union %s ausente", f->type);
+                if (!ut) return failf(w, "missing union %s", f->type);
                 if (um_member(ut, spec->name, &mf) != 0 || !mf)
-                    return failf(w, "union member %s nao encontrado em %s.%s",
+                    return failf(w, "union member %s not found in %s.%s",
                                  spec->name, st->name, f->type);
                 if (mf->ptr && !is_following(uv)) return 0;
                 if (!mf->ptr && is_union_type(mf->type) && !is_following(uv))
@@ -1181,7 +1181,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             const T4ZStruct *es = t4z_struct(spec->e);
             long n = spec_cnt(w, spec);
             long i;
-            if (!es) return failf(w, "struct %s desconhecida", spec->e);
+            if (!es) return failf(w, "unknown struct %s", spec->e);
             if (n < 0) return -1;
             w->pos += (size_t)(n * (long)es->size) - f->size;
             for (i = 0; i < n; i++)
@@ -1193,7 +1193,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
             return 0;
         if (spec && spec->kind == K_INLINE) {
             const T4ZStruct *is = t4z_struct(spec->e);
-            if (!is) return failf(w, "struct %s desconhecida", spec->e);
+            if (!is) return failf(w, "unknown struct %s", spec->e);
             return proc(w, is, base + f->off);
         }
         if (f->type && !is_union_type(f->type) &&
@@ -1227,7 +1227,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
         }
         if (spec && spec->kind == K_PSTARR) {
             const T4ZStruct *es = t4z_struct(spec->e);
-            if (!es) return failf(w, "struct %s desconhecida", spec->e);
+            if (!es) return failf(w, "unknown struct %s", spec->e);
             for (i = 0; i < n; i++) {
                 uint32_t p = rd32(pp + 4 * i);
                 if (is_following(p)) {
@@ -1239,7 +1239,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
                     if (cnt < 0) return -1;
                     start = w->pos;
                     if (start + es->size * (size_t)cnt > w->len)
-                        return failf(w, "%s.%s pstructarr fora do payload",
+                        return failf(w, "%s.%s pstructarr outside the payload",
                                      st->name, f->name);
                     w->pos = start + es->size * (size_t)cnt;
                     for (j = 0; j < cnt; j++)
@@ -1258,7 +1258,7 @@ static int field(T4ZW *w, const T4ZStruct *st, const T4ZField *f,
                     cnt = ecount(w, spec->e);
                     if (cnt < 0) return -1;
                     if (w->pos + (size_t)(spec->a) * (size_t)cnt > w->len)
-                        return failf(w, "%s.%s pcount fora do payload",
+                        return failf(w, "%s.%s pcount outside the payload",
                                      st->name, f->name);
                     w->pos += (size_t)(spec->a) * (size_t)cnt;
                 }
@@ -1287,9 +1287,9 @@ static int load_alloc(T4ZW *w, const char *sname)
 {
     const T4ZStruct *st = t4z_struct(sname);
     const uint8_t *base;
-    if (!st) return failf(w, "struct %s desconhecida", sname);
+    if (!st) return failf(w, "unknown struct %s", sname);
     if (w->pos + st->size > w->len)
-        return failf(w, "blob %s fora do payload (%zu+%d > %zu)", sname,
+        return failf(w, "blob %s outside the payload (%zu+%d > %zu)", sname,
                      w->pos, st->size, w->len);
     base = w->d + w->pos;
     if (getenv("T4_ZW_DEBUG"))

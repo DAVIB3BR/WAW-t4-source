@@ -23,7 +23,7 @@ $ROOT/src/gfx.c $ROOT/src/gfx_gl.c $ROOT/src/gfx_vk.c \
 $ROOT/src/gsc.c $ROOT/src/mods.c $ROOT/src/net.c $ROOT/src/platform.c \
 $ROOT/src/png.c $ROOT/src/sdl2_dyn.c $ROOT/src/zonewalk.c \
 $ROOT/src/world.c $ROOT/src/gapi.c $ROOT/src/menu.c"
-CFLAGS="-std=c11 -O2 -Wall -Wextra -I$ROOT/src"
+CFLAGS="-std=c11 -O2 -Wall -Wextra -Wno-missing-field-initializers -I$ROOT/src"
 ZLIB_VER=1.3.1
 
 # ---------------------------------------------------------------- ferramenta
