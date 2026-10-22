@@ -34,24 +34,24 @@ int t4_ff_load(T4FF *ff, const char *path)
     g_err[0] = '\0';
 
     fp = fopen(path, "rb");
-    if (!fp) return fail("abrir fastfile");
+    if (!fp) return fail("open fastfile");
 
     fseek(fp, 0, SEEK_END);
     fsize = ftell(fp);
-    if (fsize < 16) { fclose(fp); return fail("fastfile curto demais"); }
+    if (fsize < 16) { fclose(fp); return fail("fastfile too short"); }
     fseek(fp, 0, SEEK_SET);
 
     raw = (uint8_t *)malloc((size_t)fsize);
-    if (!raw) { fclose(fp); return fail("sem memoria (raw)"); }
+    if (!raw) { fclose(fp); return fail("out of memory (raw)"); }
     if (fread(raw, 1, (size_t)fsize, fp) != (size_t)fsize) {
         free(raw); fclose(fp);
-        return fail("leitura do fastfile");
+        return fail("fastfile read");
     }
     fclose(fp);
 
     if (memcmp(raw, T4_FF_MAGIC, 8) != 0) {
         free(raw);
-        snprintf(g_err, sizeof(g_err), "magic invalido (esperado \"%s\")", T4_FF_MAGIC);
+        snprintf(g_err, sizeof(g_err), "invalid magic (expected \"%s\")", T4_FF_MAGIC);
         return -1;
     }
 
@@ -62,7 +62,7 @@ int t4_ff_load(T4FF *ff, const char *path)
      * o inflate realloca por blocos se precisar. */
     out_cap = (size_t)fsize * 2;
     out = (uint8_t *)malloc(out_cap);
-    if (!out) { free(raw); return fail("sem memoria (out)"); }
+    if (!out) { free(raw); return fail("out of memory (out)"); }
 
     memset(&strm, 0, sizeof(strm));
     strm.next_in = raw + 12;
@@ -82,7 +82,7 @@ int t4_ff_load(T4FF *ff, const char *path)
             if (strm.avail_out == 0) {
                 size_t have = strm.total_out;
                 uint8_t *bigger = (uint8_t *)realloc(out, out_cap * 2);
-                if (!bigger) { inflateEnd(&strm); free(raw); free(out); return fail("sem memoria (grow)"); }
+                if (!bigger) { inflateEnd(&strm); free(raw); free(out); return fail("out of memory (grow)"); }
                 out = bigger;
                 out_cap *= 2;
                 strm.next_out = out + have;
@@ -91,7 +91,7 @@ int t4_ff_load(T4FF *ff, const char *path)
             }
             if (rc == Z_BUF_ERROR && strm.avail_in == 0) {
                 inflateEnd(&strm); free(raw); free(out);
-                return fail("zlib truncado antes do fim");
+                return fail("zlib truncated before the end");
             }
             continue;
         }
@@ -131,7 +131,7 @@ void t4_ff_free(T4FF *ff)
 
 static int fail_msg(const char *msg)
 {
-    snprintf(g_err, sizeof(g_err), "%s", msg ? msg : "erro");
+    snprintf(g_err, sizeof(g_err), "%s", msg ? msg : "error");
     return -1;
 }
 
@@ -286,11 +286,11 @@ int t4_ff_parse(T4FF *ff)
     size_t n, base, pos, need;
     uint32_t scount, sptr, acount, aptr, i;
 
-    if (!ff || !ff->data) return fail_msg("t4_ff_parse sem dados");
+    if (!ff || !ff->data) return fail_msg("t4_ff_parse without data");
     g_err[0] = '\0';
     r = ff->data;
     n = ff->len;
-    if (n < 52) return fail_msg("stream curto (XAssetList)");
+    if (n < 52) return fail_msg("short stream (XAssetList)");
 
     ff->size = rd32(r);
     ff->external_size = rd32(r + 4);
@@ -302,13 +302,13 @@ int t4_ff_parse(T4FF *ff)
     aptr = rd32(r + 48);
     (void)sptr;
     if (aptr != T4_FF_PTR_FOLLOWING) {
-        snprintf(g_err, sizeof(g_err), "assets* nao-FOLLOWING: 0x%08x", aptr);
+        snprintf(g_err, sizeof(g_err), "non-FOLLOWING assets*: 0x%08x", aptr);
         return -1;
     }
 
     base = 52;
     if ((size_t)scount > (n - base) / 4 || (size_t)acount > (n - base) / 8)
-        return fail_msg("contagens de string/asset fora dos limites");
+        return fail_msg("string/asset counts out of bounds");
 
     /* Script strings: slots FOLLOWING seguidos das strings inline. */
     pos = base + 4 * (size_t)scount;
@@ -317,18 +317,18 @@ int t4_ff_parse(T4FF *ff)
         if (v == T4_FF_PTR_FOLLOWING) {
             const char *s;
             if (!cstr_at(r, n, pos, &s, &pos))
-                return fail_msg("script string invalida");
+                return fail_msg("invalid script string");
         } else if (v != 0) {
             const char *s;
             if (v - 1 >= n || !cstr_at(r, n, base + (v - 1), &s, &need))
-                return fail_msg("script string (offset) invalida");
+                return fail_msg("invalid script string (offset)");
         }
     }
     ff->string_count = scount;
 
     /* Array de XAsset {type, header*} em pares de 8 bytes. */
     need = 8 * (size_t)acount;
-    if (pos > n || need > n - pos) return fail_msg("array de assets fora dos limites");
+    if (pos > n || need > n - pos) return fail_msg("asset array out of bounds");
     ff->asset_types = (uint32_t *)(void *)(r + pos);
     ff->asset_count = acount;
     ff->data_start = (uint32_t)(pos + need);
@@ -352,7 +352,7 @@ int t4_ff_walk(const T4FF *ff, int collect_rawfiles,
     if (n_skipped) *n_skipped = 0;
     if (anchor_failed) *anchor_failed = 0;
     if (!ff || !ff->data || !ff->asset_types)
-        return fail_msg("t4_ff_walk sem t4_ff_parse");
+        return fail_msg("t4_ff_walk without t4_ff_parse");
 
     r = ff->data;
     n = ff->len;
@@ -361,7 +361,7 @@ int t4_ff_walk(const T4FF *ff, int collect_rawfiles,
     pos = ff->data_start;
 
     arr = (T4FFAsset *)calloc(nn ? (size_t)nn : 1, sizeof(T4FFAsset));
-    if (!arr) return fail_msg("sem memoria (walk)");
+    if (!arr) return fail_msg("out of memory (walk)");
 
     while (i < nn) {
         uint32_t t = rd32(types + 8 * i);

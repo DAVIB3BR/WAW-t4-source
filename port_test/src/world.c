@@ -44,7 +44,7 @@ int t4_world_load(T4World *wv, const T4FF *ff, char *err, size_t errcap)
 
     memset(wv, 0, sizeof(*wv));
     if (!ff || !ff->data || !ff->asset_types) {
-        snprintf(err, errcap, "world: ff nao parseado");
+        snprintf(err, errcap, "world: ff not parsed");
         return -1;
     }
     t4z_init(&w, ff->data, ff->len);
@@ -125,7 +125,7 @@ int t4_world_load(T4World *wv, const T4FF *ff, char *err, size_t errcap)
         vsz = vs ? vs->size : 44;
     }
     if (off_xyz < 0 || off_vc < 0 || off_mins < 0 || off_maxs < 0) {
-        snprintf(err, errcap, "world: layout GfxWorld inesperado");
+        snprintf(err, errcap, "world: unexpected GfxWorld layout");
         return -1;
     }
 
@@ -153,7 +153,7 @@ int t4_world_load(T4World *wv, const T4FF *ff, char *err, size_t errcap)
     wv->nrm = (float *)malloc((size_t)nverts * 3 * sizeof(float));
     wv->idx = (uint16_t *)malloc((size_t)nidx * sizeof(uint16_t));
     if (!wv->pos || !wv->nrm || !wv->idx) {
-        snprintf(err, errcap, "world: sem memoria (%u verts)", nverts);
+        snprintf(err, errcap, "world: out of memory (%u verts)", nverts);
         t4_world_free(wv);
         return -1;
     }
@@ -205,7 +205,7 @@ int t4_world_load(T4World *wv, const T4FF *ff, char *err, size_t errcap)
 
     if (bad_pos > (long)(nverts / 100) || bad_idx > (long)(nidx / 100)) {
         snprintf(err, errcap,
-                 "world: dados invalidos (pos=%ld idx=%ld) - walker fora do GfxWorld",
+                 "world: invalid data (pos=%ld idx=%ld) - walker outside the GfxWorld",
                  bad_pos, bad_idx);
         t4_world_free(wv);
         return -1;

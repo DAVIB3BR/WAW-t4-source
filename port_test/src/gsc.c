@@ -266,7 +266,7 @@ static void scan(Lex *L)
         EMIT('%', T_PCT);
     default:
         /* caractere fora da grammatica: erro (evita loop/parse silencioso) */
-        failp(L, "caractere nao reconhecido no script");
+        failp(L, "unrecognized character in script");
     }
 #undef EMIT
 #undef EMIT2
@@ -338,7 +338,7 @@ static void parse_primary(Lex *L)
             parse_expr(L);
             while (eat(L, T_COMMA)) parse_expr(L);
         }
-        need(L, T_RP, "esperava ')'");
+        need(L, T_RP, "expected ')'");
         return;
     case T_LB:                    /* [] e [x] = literal de array */
         adv(L);
@@ -346,41 +346,41 @@ static void parse_primary(Lex *L)
             parse_expr(L);
             while (eat(L, T_COMMA)) parse_expr(L);
         }
-        need(L, T_RB, "esperava ']'");
+        need(L, T_RB, "expected ']'");
         return;
     case T_PCT:                   /* %anim_name = referencia de animacao */
         adv(L);
         if (at(L, T_ID) || at(L, T_NUM)) adv(L);
-        else failp(L, "esperava nome de animacao apos '%'");
+        else failp(L, "expected animation name after '%'");
         return;
     case T_HASH:                  /* #animtree = referencia global de arvores */
         adv(L);
         if (at(L, T_ID) || at(L, T_NUM)) adv(L);
-        else failp(L, "esperava nome apos '#'");
+        else failp(L, "expected name after '#'");
         return;
     case T_DCOLON:                 /* ::funcao -> referencia literal de funcao
                                     * (ex.: array_thread(arr, ::spawn_one)) */
         adv(L);
-        if (!at(L, T_ID)) failp(L, "esperava nome apos '::'");
+        if (!at(L, T_ID)) failp(L, "expected name after '::'");
         adv(L);
         if (eat(L, T_LP)) {
             parse_args(L);
-            need(L, T_RP, "esperava ')'");
+            need(L, T_RP, "expected ')'");
             L->g->calls++;
         }
         return;
     case T_LBRB:                 /* [[ funcao_ptr ]] (args) */
         adv(L);
         parse_expr(L);
-        need(L, T_RB, "esperava ']' (ponteiro de funcao)");
-        need(L, T_RB, "esperava ']]' (ponteiro de funcao)");
+        need(L, T_RB, "expected ']' (function pointer)");
+        need(L, T_RB, "expected ']]' (function pointer)");
         need(L, T_LP, "ponteiro de funcao deve ser chamado: [[fn]]()");
         parse_args(L);
-        need(L, T_RP, "esperava ')'");
+        need(L, T_RP, "expected ')'");
         L->g->calls++;
         return;
     default:
-        failp(L, "esperava expressao");
+        failp(L, "expected expression");
     }
 }
 
@@ -390,33 +390,33 @@ static void parse_postfix_tail(Lex *L)
         if (at(L, T_LP)) {                    /* chamada */
             adv(L);
             parse_args(L);
-            need(L, T_RP, "esperava ')'");
+            need(L, T_RP, "expected ')'");
             L->g->calls++;
         } else if (at(L, T_LB)) {             /* índice */
             adv(L);
             parse_expr(L);
-            need(L, T_RB, "esperava ']'");
+            need(L, T_RB, "expected ']'");
         } else if (at(L, T_DOT)) {            /* membro */
             adv(L);
-            if (!at(L, T_ID)) failp(L, "esperava nome apos '.'");
+            if (!at(L, T_ID)) failp(L, "expected name after '.'");
             adv(L);
         } else if (at(L, T_DCOLON)) {         /* namespace: maps\x::f() */
             adv(L);
-            if (!at(L, T_ID)) failp(L, "esperava funcao apos '::'");
+            if (!at(L, T_ID)) failp(L, "expected function after '::'");
             adv(L);
             if (eat(L, T_LP)) {
                 parse_args(L);
-                need(L, T_RP, "esperava ')'");
+                need(L, T_RP, "expected ')'");
                 L->g->calls++;
             }
         } else if (at(L, T_LBRB)) {           /* [[fn]]() infixo */
             adv(L);
             parse_expr(L);
-            need(L, T_RB, "esperava ']'");
-            need(L, T_RB, "esperava ']]'");
+            need(L, T_RB, "expected ']'");
+            need(L, T_RB, "expected ']]'");
             need(L, T_LP, "ponteiro de funcao deve ser chamado");
             parse_args(L);
-            need(L, T_RP, "esperava ')'");
+            need(L, T_RP, "expected ')'");
             L->g->calls++;
         } else if (at(L, T_INC) || at(L, T_DEC)) {
             adv(L);
@@ -433,7 +433,7 @@ static void parse_postfix_tail(Lex *L)
             if (at(L, T_LP)) {
                 adv(L);
                 parse_args(L);
-                need(L, T_RP, "esperava ')'");
+                need(L, T_RP, "expected ')'");
                 L->g->calls++;
             }
         } else break;
@@ -495,7 +495,7 @@ static void parse_ternary(Lex *L)
     if (at(L, T_QUEST)) {
         adv(L);
         parse_expr(L);
-        need(L, T_COLON, "esperava ':' no operador ?:");
+        need(L, T_COLON, "expected ':' in the ?: operator");
         parse_ternary(L);
     }
 }
@@ -526,77 +526,77 @@ static void parse_stmt(Lex *L)
 
     if (is_id(L, "if")) {
         adv(L);
-        need(L, T_LP, "esperava '(' apos if");
+        need(L, T_LP, "expected '(' after if");
         parse_expr(L);
-        need(L, T_RP, "esperava ')' do if");
+        need(L, T_RP, "expected ')' of the if");
         parse_stmt(L);
         if (is_id(L, "else")) { adv(L); parse_stmt(L); }
         return;
     }
     if (is_id(L, "for")) {
         adv(L);
-        need(L, T_LP, "esperava '(' apos for");
+        need(L, T_LP, "expected '(' after for");
         if (!at(L, T_SEMI)) parse_expr(L);
-        need(L, T_SEMI, "esperava ';' no for");
+        need(L, T_SEMI, "expected ';' in the for");
         if (!at(L, T_SEMI)) parse_expr(L);
-        need(L, T_SEMI, "esperava ';' no for");
+        need(L, T_SEMI, "expected ';' in the for");
         if (!at(L, T_RP)) parse_expr(L);
-        need(L, T_RP, "esperava ')' do for");
+        need(L, T_RP, "expected ')' of the for");
         parse_stmt(L);
         return;
     }
     if (is_id(L, "while")) {
         adv(L);
-        need(L, T_LP, "esperava '(' apos while");
+        need(L, T_LP, "expected '(' after while");
         parse_expr(L);
-        need(L, T_RP, "esperava ')' do while");
+        need(L, T_RP, "expected ')' of the while");
         parse_stmt(L);
         return;
     }
     if (is_id(L, "do")) {
         adv(L);
         parse_stmt(L);
-        if (!is_id(L, "while")) failp(L, "esperava 'while' no do..while");
+        if (!is_id(L, "while")) failp(L, "expected 'while' in the do..while");
         adv(L);
-        need(L, T_LP, "esperava '(' apos while");
+        need(L, T_LP, "expected '(' after while");
         parse_expr(L);
-        need(L, T_RP, "esperava ')'");
-        need(L, T_SEMI, "esperava ';' no do..while");
+        need(L, T_RP, "expected ')'");
+        need(L, T_SEMI, "expected ';' in the do..while");
         return;
     }
     if (is_id(L, "switch")) {
         adv(L);
-        need(L, T_LP, "esperava '(' apos switch");
+        need(L, T_LP, "expected '(' after switch");
         parse_expr(L);
-        need(L, T_RP, "esperava ')' do switch");
-        need(L, T_LBRACE, "esperava '{' do switch");
+        need(L, T_RP, "expected ')' of the switch");
+        need(L, T_LBRACE, "expected '{' of the switch");
         while (!at(L, T_RBRACE) && !at(L, T_EOF)) {
             if (is_id(L, "case"))      { adv(L); parse_expr(L); }
             else if (is_id(L, "default")) adv(L);
-            else failp(L, "esperava 'case' ou 'default'");
-            need(L, T_COLON, "esperava ':' apos case/default");
+            else failp(L, "expected 'case' or 'default'");
+            need(L, T_COLON, "expected ':' after case/default");
             while (!at(L, T_RBRACE) && !at(L, T_EOF) &&
                    !is_id(L, "case") && !is_id(L, "default"))
                 parse_stmt(L);
         }
-        need(L, T_RBRACE, "esperava '}' do switch");
+        need(L, T_RBRACE, "expected '}' of the switch");
         return;
     }
     if (is_id(L, "break") || is_id(L, "continue")) {
         adv(L);
-        need(L, T_SEMI, "esperava ';' apos break/continue");
+        need(L, T_SEMI, "expected ';' after break/continue");
         return;
     }
     if (is_id(L, "return")) {
         adv(L);
         if (!at(L, T_SEMI)) parse_expr(L);
-        need(L, T_SEMI, "esperava ';' apos return");
+        need(L, T_SEMI, "expected ';' after return");
         return;
     }
     if (is_id(L, "wait")) {
         adv(L);
         parse_expr(L);
-        need(L, T_SEMI, "esperava ';' apos wait");
+        need(L, T_SEMI, "expected ';' after wait");
         return;
     }
     /* include sem '#': "include maps\\mp\\_utility;" (existe no jogo) */
@@ -604,7 +604,7 @@ static void parse_stmt(Lex *L)
         L->g->includes++;
         adv(L);
         if (at(L, T_ID) || at(L, T_STR)) adv(L);
-        else failp(L, "esperava caminho apos include");
+        else failp(L, "expected path after include");
         eat(L, T_SEMI);
         return;
     }
@@ -619,14 +619,14 @@ static void parse_stmt(Lex *L)
     /* Os scripts do jogo tem ";' omitido antes da quebra de linha
      * (ex.: animscripts/traverse/stairs_down.gsc) -> aceita. */
     if (L->tline != L->prev_line) return;
-    failp(L, "esperava ';' ao final da instrucao");
+    failp(L, "expected ';' at the end of the statement");
 }
 
 static void parse_block(Lex *L)
 {
-    need(L, T_LBRACE, "esperava '{'");
+    need(L, T_LBRACE, "expected '{'");
     while (!at(L, T_RBRACE) && !at(L, T_EOF)) parse_stmt(L);
-    need(L, T_RBRACE, "esperava '}'");
+    need(L, T_RBRACE, "expected '}'");
 }
 
 /* Eh `nome ( params ) {` (definicao de funcao de topo)? Com lookahead. */
@@ -663,25 +663,25 @@ static void skip_directive(Lex *L)
 static void parse_directive(Lex *L)
 {
     adv(L);                                  /* passa '#' */
-    if (!at(L, T_ID)) failp(L, "esperava nome de diretiva apos '#'");
+    if (!at(L, T_ID)) failp(L, "expected directive name after '#'");
 
     if (is_id(L, "include")) {
         L->g->includes++;
         adv(L);
         if (at(L, T_ID) || at(L, T_STR)) adv(L);
-        else failp(L, "esperava caminho apos #include");
+        else failp(L, "expected path after #include");
         eat(L, T_SEMI);
         return;
     }
     if (is_id(L, "using_animtree")) {
         L->g->includes++;
         adv(L);
-        need(L, T_LP, "esperava '(' apos #using_animtree");
+        need(L, T_LP, "expected '(' after #using_animtree");
         /* no jogo real: #using_animtree( "generic_human" ); e tambem
          * #using_animtree( 0 ); -> aceita texto, numero ou nome */
         if (at(L, T_NUM) || at(L, T_STR) || at(L, T_ID)) adv(L);
-        else failp(L, "esperava numero/texto em #using_animtree");
-        need(L, T_RP, "esperava ')'");
+        else failp(L, "expected number/string in #using_animtree");
+        need(L, T_RP, "expected ')'");
         eat(L, T_SEMI);
         return;
     }
@@ -698,16 +698,16 @@ static void parse_program(Lex *L)
         if (at(L, T_STAR) && peek_is(L, T_SLASH)) { adv(L); adv(L); continue; }
         if (at(L, T_ID) && looks_like_funcdef(L)) {
             adv(L);                        /* nome da funcao */
-            need(L, T_LP, "esperava '(' na definicao de funcao");
+            need(L, T_LP, "expected '(' in the function definition");
             if (!at(L, T_RP)) {            /* parametros */
-                if (!at(L, T_ID)) failp(L, "esperava parametro (nome)");
+                if (!at(L, T_ID)) failp(L, "expected parameter (name)");
                 adv(L);
                 while (eat(L, T_COMMA)) {
-                    if (!at(L, T_ID)) failp(L, "esperava parametro (nome)");
+                    if (!at(L, T_ID)) failp(L, "expected parameter (name)");
                     adv(L);
                 }
             }
-            need(L, T_RP, "esperava ')'");
+            need(L, T_RP, "expected ')'");
             L->g->funcs++;
             parse_block(L);
             continue;
@@ -760,21 +760,21 @@ int t4_gsc_parse_file(T4GSC *g, const char *path)
 
     f = fopen(path, "rb");
     if (!f) {
-        snprintf(g->err, sizeof(g->err), "nao abriu o arquivo");
+        snprintf(g->err, sizeof(g->err), "could not open the file");
         g->err_line = 1;
         g->err_col = 1;
         return -1;
     }
     if (fseek(f, 0, SEEK_END) != 0 || (n = ftell(f)) < 0) {
         fclose(f);
-        snprintf(g->err, sizeof(g->err), "nao mediu o arquivo");
+        snprintf(g->err, sizeof(g->err), "could not stat the file");
         return -1;
     }
     rewind(f);
     buf = (char *)malloc((size_t)n + 1);
     if (!buf) {
         fclose(f);
-        snprintf(g->err, sizeof(g->err), "sem memoria");
+        snprintf(g->err, sizeof(g->err), "out of memory");
         return -1;
     }
     {

@@ -12,7 +12,7 @@ static void *t4_dlsym(void *lib, const char *name)
     return (void *)GetProcAddress((HMODULE)lib, name);
 }
 static void t4_dlclose(void *lib) { if (lib) FreeLibrary((HMODULE)lib); }
-static const char *t4_dlerror(void) { return "SDL2.dll nao encontrada"; }
+static const char *t4_dlerror(void) { return "SDL2.dll not found"; }
 #else
 #include <dlfcn.h>
 #define t4_dlopen(n)       dlopen((n), RTLD_NOW | RTLD_LOCAL)
@@ -239,7 +239,7 @@ int t4_sdl_load(void)
         tried = candidates[i];
     }
     if (!g_lib) {
-        snprintf(g_err, sizeof(g_err), "SDL2 nao encontrada (ultima tentativa %s): %s",
+        snprintf(g_err, sizeof(g_err), "SDL2 not found (last attempt %s): %s",
                  tried, t4_dlerror());
         return -1;
     }
@@ -289,7 +289,7 @@ int t4_sdl_load(void)
     t4_SDL_Vulkan_GetDrawableSize = (void (*)(T4_SDL_Window *, int *, int *))sym_opt(g_lib, "SDL_Vulkan_GetDrawableSize");
 
     if (g_err[0]) {
-        snprintf(g_err, sizeof(g_err), "SDL2 carregada mas simbolos ausentes: %s", g_err);
+        snprintf(g_err, sizeof(g_err), "SDL2 loaded but symbols missing: %s", g_err);
         t4_dlclose(g_lib);
         g_lib = NULL;
         return -1;

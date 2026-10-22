@@ -202,7 +202,7 @@ int t4_gfx_config_set(T4GfxApi a)
     ensure_parent_dir(path);
     fp = fopen(path, "w");
     if (!fp) {
-        snprintf(g_err, sizeof(g_err), "nao consegui escrever %s", path);
+        snprintf(g_err, sizeof(g_err), "could not write %s", path);
         return -1;
     }
     fprintf(fp,
@@ -225,10 +225,10 @@ int t4_gfx_detect(char lines[][128], int max)
 
     if (n < max) {
         if (t4_sdl_load() == 0) {
-            snprintf(lines[n], 128, "SDL2            OK (janela + superficies)");
+            snprintf(lines[n], 128, "SDL2            OK (window + surfaces)");
             t4_sdl_unload();
         } else {
-            snprintf(lines[n], 128, "SDL2            AUSENTE: %s",
+            snprintf(lines[n], 128, "SDL2            MISSING: %s",
                      t4_sdl_error());
         }
         n++;
@@ -250,8 +250,8 @@ int t4_gfx_detect(char lines[][128], int max)
 
     if (n < max) {
         snprintf(lines[n], 128,
-                 "selecao atual   %s (%s)", t4_gfx_api_name(t4_gfx_config_get()),
-                 "t4port api <auto|opengl|vulkan|opengles> para mudar");
+                 "current choice  %s (%s)", t4_gfx_api_name(t4_gfx_config_get()),
+                 "t4port api <auto|opengl|vulkan|opengles> to change");
         n++;
     }
     return n;
@@ -267,7 +267,7 @@ int t4_gfx_run(T4GfxApi api, int w, int h, int seconds)
     g_err[0] = '\0';
 
     if (t4_sdl_load() != 0) {
-        snprintf(g_err, sizeof(g_err), "SDL2 indisponivel: %s", t4_sdl_error());
+        snprintf(g_err, sizeof(g_err), "SDL2 unavailable: %s", t4_sdl_error());
         return -1;
     }
     if (t4_SDL_Init(T4_SDL_INIT_VIDEO) != 0) {

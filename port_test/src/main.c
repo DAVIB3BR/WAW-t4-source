@@ -44,28 +44,28 @@ static int bundle_game_dir(char *buf, size_t cap);
 static void usage(void)
 {
     printf(
-        "t4port - nucleo nativo do porte de Call of Duty: World at War (motor IW 3.0)\n"
+        "t4port - native core of the Call of Duty: World at War port (IW 3.0 engine)\n"
         "\n"
-        "uso:\n"
-        "  t4port info  <dir_do_jogo>\n"
-        "  t4port zip   <arquivo.iwd> [filtro]\n"
-        "  t4port ff    <arquivo.ff> [-o dir] [filtro]\n"
+        "usage:\n"
+        "  t4port info  <game_dir>\n"
+        "  t4port zip   <file.iwd> [filter]\n"
+        "  t4port ff    <file.ff> [-o dir] [filter]\n"
         "  t4port mods  init|unpack|list|which ...\n"
-        "  t4port gsc   <arquivo.gsc | pasta>   valida scripts extraidos\n"
-        "  t4port iwi   <arquivo.iwi> [-o saida.png]\n"
-        "  t4port view  <arquivo.iwi>\n"
-        "  t4port view  --iwd <arquivo.iwd> <entrada>\n"
-        "  t4port extract <arquivo.iwd> <entrada> -o <saida>\n"
-        "  t4port video  <arquivo.bik> [-o saida.mp4] [--play]\n"
-        "  t4port api    [auto|opengl|vulkan|opengles]   API grafica (video)\n"
+        "  t4port gsc   <file.gsc | folder>   validate extracted scripts\n"
+        "  t4port iwi   <file.iwi> [-o out.png]\n"
+        "  t4port view  <file.iwi>\n"
+        "  t4port view  --iwd <file.iwd> <entry>\n"
+        "  t4port extract <file.iwd> <entry> -o <output>\n"
+        "  t4port video  <file.bik> [-o out.mp4] [--play]\n"
+        "  t4port api    [auto|opengl|vulkan|opengles]   graphics API (video)\n"
         "  t4port play   [dir]                    start the game (Windows: native)\n"
         "  t4port menu   [--list]                 video options and system APIs\n"
-        "  t4port gpu    [--fix|--unfix]          placas/drivers (NVIDIA, AMD, Intel)\n"
-        "  t4port gfx    [--api A] [--segundos N] [--janela W H]  janela de teste\n"
-        "  t4port world  <mapa.ff> [--api A] [--segundos N] [--shot x.png]  renderiza o mapa\n"
-        "  t4port lan host      [--nome N] [--mapa M] [--modo MD] [--porta P]\n"
-        "  t4port lan discover  [--espera MS] [--porta P] [--to IP]\n"
-        "  t4port check | --check   diagnostica o ambiente\n");
+        "  t4port gpu    [--fix|--unfix]          cards/drivers (NVIDIA, AMD, Intel)\n"
+        "  t4port gfx    [--api A] [--seconds N] [--window W H]  test window\n"
+        "  t4port world  <map.ff> [--api A] [--seconds N] [--shot x.png]  renders the map\n"
+        "  t4port lan host      [--name N] [--map M] [--mode MD] [--port P]\n"
+        "  t4port lan discover  [--wait MS] [--port P] [--to IP]\n"
+        "  t4port check | --check   diagnose the environment\n");
 }
 
 static int has_suffix(const char *s, const char *suf)
@@ -100,10 +100,10 @@ static int cmd_info(const char *root)
 
     snprintf(path, sizeof(path), "%s/main", root);
     d = opendir(path);
-    if (!d) { fprintf(stderr, "t4port: nao encontrei '%s' (esperado <jogo>/main)\n", path); return 1; }
+    if (!d) { fprintf(stderr, "t4port: '%s' not found (expected <game>/main)\n", path); return 1; }
 
     printf("== %s ==\n", root);
-    printf("%-28s %12s %10s %14s\n", "iwd", "tamanho", "entradas", "descompactado");
+    printf("%-28s %12s %10s %14s\n", "iwd", "size", "entries", "unpacked");
     while ((e = readdir(d))) {
         T4Iwd z;
         struct stat st;
@@ -125,7 +125,7 @@ static int cmd_info(const char *root)
     }
     closedir(d);
 
-    printf("\n%-.1f MB em %d .iwd, %llu entradas, %-.1f MB descompactados\n\n",
+    printf("\n%-.1f MB in %d .iwd, %llu entries, %-.1f MB unpacked\n\n",
            iwd_bytes / 1048576.0, n_iwd, (unsigned long long)entries,
            iwd_unpacked / 1048576.0);
 
@@ -133,7 +133,7 @@ static int cmd_info(const char *root)
     d = opendir(path);
     if (d) {
         struct dirent *de;
-        printf("%-32s %12s\n", "fastfile", "tamanho");
+        printf("%-32s %12s\n", "fastfile", "size");
         while ((de = readdir(d))) {
             char zp[1024];
             DIR *zd;
@@ -174,7 +174,7 @@ static int cmd_zip(const char *iwd, const char *filter)
         fprintf(stderr, "t4port: %s: %s\n", iwd, t4_iwd_error());
         return 1;
     }
-    printf("%s: %zu entradas, %.1f MB descompactados\n", iwd, t4_iwd_count(&z),
+    printf("%s: %zu entries, %.1f MB unpacked\n", iwd, t4_iwd_count(&z),
            z.total_uncomp / 1048576.0);
     for (i = 0; i < t4_iwd_count(&z); i++) {
         const T4ZipEntry *e = t4_iwd_at(&z, i);
@@ -203,12 +203,12 @@ static int cmd_extract(const char *iwd, const char *entry, const char *out_path)
     }
     e = t4_iwd_find(&z, entry);
     if (!e) {
-        fprintf(stderr, "t4port: entrada '%s' nao encontrada\n", entry);
+        fprintf(stderr, "t4port: entry '%s' not found\n", entry);
         t4_iwd_close(&z);
         return 1;
     }
     if (t4_iwd_read(&z, e, &data, &len) != 0) {
-        fprintf(stderr, "t4port: falha lendo '%s': %s\n", entry, t4_iwd_error());
+        fprintf(stderr, "t4port: failed reading '%s': %s\n", entry, t4_iwd_error());
         t4_iwd_close(&z);
         return 1;
     }
@@ -216,7 +216,7 @@ static int cmd_extract(const char *iwd, const char *entry, const char *out_path)
     if (!fp) { free(data); t4_iwd_close(&z); return 1; }
     fwrite(data, 1, len, fp);
     fclose(fp);
-    printf("extraiu %s (%zu bytes) -> %s\n", entry, len, out_path);
+    printf("extracted %s (%zu bytes) -> %s\n", entry, len, out_path);
     free(data);
     t4_iwd_close(&z);
     return 0;
@@ -227,7 +227,7 @@ static int cmd_extract(const char *iwd, const char *entry, const char *out_path)
 static void lan_on_query(const char *ip, int sport, void *ud)
 {
     const T4LanInfo *in = (const T4LanInfo *)ud;
-    printf("  consulta de %s:%d  -> INFO enviado (mapa %s, modo %s)\n",
+    printf("  query from %s:%d  -> INFO sent (map %s, mode %s)\n",
            ip, sport, in->map, in->mode);
     fflush(stdout);
 }
@@ -238,10 +238,10 @@ static int cmd_lan(int argc, char **argv)
 
     if (!sub || (strcmp(sub, "host") != 0 && strcmp(sub, "discover") != 0)) {
         fprintf(stderr,
-                "uso:\n"
-                "  t4port lan host [--nome N] [--mapa M] [--modo MD]\n"
-                "                  [--porta P] [--jogadores A] [--max B]\n"
-                "  t4port lan discover [--espera MS] [--porta P] [--to IP]\n"
+                "usage:\n"
+                "  t4port lan host [--name N] [--map M] [--mode MD]\n"
+                "                  [--port P] [--players A] [--max B]\n"
+                "  t4port lan discover [--wait MS] [--port P] [--to IP]\n"
                 "\n"
                 "host      = anfitriao LAN (responde descoberta UDP T4LAN1)\n"
                 "discover  = busca anfitrioes na rede (broadcast da Ethernet)\n");
@@ -262,17 +262,17 @@ static int cmd_lan(int argc, char **argv)
 
         for (i = 3; i < argc; i++) {
             const char *a = argv[i];
-            if (!strcmp(a, "--nome") && i + 1 < argc) snprintf(in.name, sizeof(in.name), "%s", argv[++i]);
-            else if (!strcmp(a, "--mapa") && i + 1 < argc) snprintf(in.map, sizeof(in.map), "%s", argv[++i]);
-            else if (!strcmp(a, "--modo") && i + 1 < argc) snprintf(in.mode, sizeof(in.mode), "%s", argv[++i]);
-            else if (!strcmp(a, "--porta") && i + 1 < argc) port = atoi(argv[++i]);
+            if ((!strcmp(a, "--nome") || !strcmp(a, "--name")) && i + 1 < argc) snprintf(in.name, sizeof(in.name), "%s", argv[++i]);
+            else if ((!strcmp(a, "--mapa") || !strcmp(a, "--map")) && i + 1 < argc) snprintf(in.map, sizeof(in.map), "%s", argv[++i]);
+            else if ((!strcmp(a, "--modo") || !strcmp(a, "--mode")) && i + 1 < argc) snprintf(in.mode, sizeof(in.mode), "%s", argv[++i]);
+            else if ((!strcmp(a, "--porta") || !strcmp(a, "--port")) && i + 1 < argc) port = atoi(argv[++i]);
             else if (!strcmp(a, "--jogadores") && i + 1 < argc) in.players = atoi(argv[++i]);
             else if (!strcmp(a, "--max") && i + 1 < argc) in.max_players = atoi(argv[++i]);
             else { fprintf(stderr, "t4port: lan host: opcao desconhecida %s\n", a); return 1; }
         }
 
-        printf("modo LAN ativo (protocolo T4LAN1/UDP, porta %d)\n", port);
-        printf("  nome=%s  mapa=%s  modo=%s  jogadores=%d/%d\n",
+        printf("LAN mode active (T4LAN1/UDP protocol, port %d)\n", port);
+        printf("  name=%s  map=%s  mode=%s  players=%d/%d\n",
                in.name, in.map, in.mode, in.players, in.max_players);
         n = t4_lan_local_ips(ips, 8);
         printf("  escutando em:");
@@ -297,8 +297,8 @@ static int cmd_lan(int argc, char **argv)
 
         for (i = 3; i < argc; i++) {
             const char *a = argv[i];
-            if (!strcmp(a, "--espera") && i + 1 < argc) wait = atoi(argv[++i]);
-            else if (!strcmp(a, "--porta") && i + 1 < argc) port = atoi(argv[++i]);
+            if ((!strcmp(a, "--espera") || !strcmp(a, "--wait")) && i + 1 < argc) wait = atoi(argv[++i]);
+            else if ((!strcmp(a, "--porta") || !strcmp(a, "--port")) && i + 1 < argc) port = atoi(argv[++i]);
             else if (!strcmp(a, "--to") && i + 1 < argc) to = argv[++i];
             else { fprintf(stderr, "t4port: lan discover: opcao desconhecida %s\n", a); return 1; }
         }
@@ -307,7 +307,7 @@ static int cmd_lan(int argc, char **argv)
             fprintf(stderr, "t4port: %s\n", t4_lan_error());
             return 1;
         }
-        printf("descoberta em %d ms (porta %d): %d host(s)\n", wait, port, count);
+        printf("discovery in %d ms (port %d): %d host(s)\n", wait, port, count);
         for (i = 0; i < count; i++)
             printf("  %-21s %-20s %-16s %-8s %-6s %s\n",
                    hosts[i].ip, hosts[i].name, hosts[i].map, hosts[i].mode,
@@ -343,7 +343,7 @@ static int cmd_ff(int argc, char **argv)
         else filter = argv[i];
     }
     if (!path) {
-        fprintf(stderr, "t4port: ff precisa de <arquivo.ff>\n");
+        fprintf(stderr, "t4port: ff needs <file.ff>\n");
         return 1;
     }
 
@@ -360,7 +360,7 @@ static int cmd_ff(int argc, char **argv)
     printf("fastfile: %s\n", path);
     printf("  magic              %s\n", T4_FF_MAGIC);
     printf("  versao             %u\n", ff.hdr0);
-    printf("  descompactado      %.1f MB\n", ff.len / 1048576.0);
+    printf("  unpacked           %.1f MB\n", ff.len / 1048576.0);
     printf("  size / external    %u / %u\n", ff.size, ff.external_size);
     printf("  blocos             TEMP=%u RUNTIME=%u LARGE_RUNTIME=%u "
            "PHYS_RUNTIME=%u VIRTUAL=%u LARGE=%u PHYSICAL=%u\n",
@@ -413,7 +413,7 @@ static int cmd_ff(int argc, char **argv)
             t4_ff_free(&ff);
             return 1;
         }
-        printf("  extraidos          %d rawfiles -> %s\n", written, out_dir);
+        printf("  extracted          %d rawfiles -> %s\n", written, out_dir);
     }
 
     free(assets);
@@ -493,8 +493,8 @@ static int cmd_mods(int argc, char **argv)
     if (!root) {
         if (resolve_game_root(rootbuf, sizeof(rootbuf)) != 0) {
             fprintf(stderr,
-                    "t4port: mods: raiz do jogo nao encontrada "
-                    "(exporte T4_GAME_DIR=... ou use --root <dir>)\n");
+                    "t4port: mods: game root not found "
+                    "(export T4_GAME_DIR=... or use --root <dir>)\n");
             return 1;
         }
         root = rootbuf;
@@ -502,26 +502,26 @@ static int cmd_mods(int argc, char **argv)
 
     if (!sub) {
         fprintf(stderr,
-                "uso:\n"
-                "  t4port mods init <nome>        cria mods/<nome>/\n"
-                "  t4port mods unpack <nome>      extrai TODOS os scripts (.gsc)\n"
-                "  t4port mods list               lista os mods\n"
-                "  t4port mods which <caminho> [--mod <nome>] [--search]\n"
+                "usage:\n"
+                "  t4port mods init <name>        creates mods/<name>/\n"
+                "  t4port mods unpack <name>      extracts ALL scripts (.gsc)\n"
+                "  t4port mods list               lists the mods\n"
+                "  t4port mods which <path> [--mod <name>] [--search]\n"
                 "  opcoes: --root <raiz_do_jogo>  (ou T4_GAME_DIR)\n");
         return 1;
     }
 
     if (strcmp(sub, "init") == 0) {
-        if (!name) { fprintf(stderr, "t4port: mods init exige <nome>\n"); return 1; }
+        if (!name) { fprintf(stderr, "t4port: mods init needs <name>\n"); return 1; }
         if (t4_mods_init(root, name) != 0) {
             fprintf(stderr, "t4port: %s\n", t4_mods_error());
             return 1;
         }
-        printf("mod criado: %s/mods/%s/ (veja MOD.txt)\n", root, name);
+        printf("mod created: %s/mods/%s/ (see MOD.txt)\n", root, name);
         return 0;
     }
     if (strcmp(sub, "unpack") == 0) {
-        if (!name) { fprintf(stderr, "t4port: mods unpack exige <nome>\n"); return 1; }
+        if (!name) { fprintf(stderr, "t4port: mods unpack needs <name>\n"); return 1; }
         if (t4_mods_unpack(root, name) != 0) {
             fprintf(stderr, "t4port: %s\n", t4_mods_error());
             return 1;
@@ -605,11 +605,11 @@ static int cmd_gsc(int argc, char **argv)
     struct stat st;
 
     if (!target) {
-        fprintf(stderr, "uso: t4port gsc <arquivo.gsc | pasta>\n");
+        fprintf(stderr, "usage: t4port gsc <file.gsc | folder>\n");
         return 1;
     }
     if (stat(target, &st) != 0) {
-        fprintf(stderr, "t4port: %s: nao encontrado\n", target);
+        fprintf(stderr, "t4port: %s: not found\n", target);
         return 1;
     }
 
@@ -668,12 +668,12 @@ static int cmd_gsc(int argc, char **argv)
         }
         free(files);
         if (nh > 0) {
-            printf("  erros por tipo:\n");
+            printf("  errors by type:\n");
             for (j = 0; j < nh && j < 12; j++)
                 printf("    %-45s %d\n", hist[j].msg, hist[j].n);
         }
-        printf("total %d | ok %d | erros %d%s\n",
-               n, ok, bad, bad > shown ? " (mostrando os 10 primeiros)" : "");
+        printf("total %d | ok %d | errors %d%s\n",
+               n, ok, bad, bad > shown ? " (showing the first 10)" : "");
         return bad ? 1 : 0;
     }
 }
@@ -718,7 +718,7 @@ static int cmd_iwi(const char *path, const char *png_out)
     int w = 0, h = 0;
 
     if (load_iwi_bytes(path, &raw, &len) != 0) {
-        fprintf(stderr, "t4port: nao consegui ler %s\n", path);
+        fprintf(stderr, "t4port: could not read %s\n", path);
         return 1;
     }
     if (t4_iwi_parse(raw, len, &info) < 0) {
@@ -732,10 +732,10 @@ static int cmd_iwi(const char *path, const char *png_out)
            info.field_0x0A, info.payload_len,
            info.format == T4_IWI_FORMAT_DXT1 ? "DXT1/BC1" :
            info.format == T4_IWI_FORMAT_DXT5 ? "DXT5/BC3" :
-           info.format == T4_IWI_FORMAT_DXN  ? "DXN/BC5 (mapa normal)" :
+           info.format == T4_IWI_FORMAT_DXN  ? "DXN/BC5 (normal map)" :
            info.format == T4_IWI_FORMAT_BGRA8 ? "BGRA8" :
            info.format == T4_IWI_FORMAT_A8L8 ? "A8L8" :
-           info.format == T4_IWI_FORMAT_L8   ? "L8" : "nao identificado");
+           info.format == T4_IWI_FORMAT_L8   ? "L8" : "unrecognized");
 
     if (t4_iwi_decode_rgba(raw, len, &rgba, &w, &h) != 0) {
         fprintf(stderr, "t4port: decodificacao: %s\n", t4_iwi_error());
@@ -746,7 +746,7 @@ static int cmd_iwi(const char *path, const char *png_out)
         if (t4_write_png(png_out, rgba, w, h) == 0)
             printf("  -> %s (%dx%d RGBA)\n", png_out, w, h);
         else {
-            fprintf(stderr, "t4port: falha escrevendo %s\n", png_out);
+            fprintf(stderr, "t4port: failed writing %s\n", png_out);
             free(rgba); free(raw);
             return 1;
         }
@@ -816,7 +816,7 @@ static int run_viewer(uint8_t *raw, size_t len, const char *title)
         return 1;
     }
     t4_SDL_UpdateTexture(tex, NULL, rgba, w * 4);
-    printf("renderizando %dx%d - ESC ou fechar a janela para sair\n", w, h);
+    printf("rendering %dx%d - ESC or close the window to quit\n", w, h);
 
     while (running) {
         T4_SDL_Rect dst;
@@ -856,7 +856,7 @@ static int cmd_view_iwi(const char *path)
     size_t len = 0;
     int rc;
     if (load_iwi_bytes(path, &raw, &len) != 0) {
-        fprintf(stderr, "t4port: nao consegui ler %s\n", path);
+        fprintf(stderr, "t4port: could not read %s\n", path);
         return 1;
     }
     rc = run_viewer(raw, len, path);
@@ -870,7 +870,7 @@ static int cmd_view_iwd(const char *iwd, const char *entry)
     size_t len = 0;
     int rc;
     if (load_iwi_from_iwd(iwd, entry, &raw, &len) != 0) {
-        fprintf(stderr, "t4port: '%s' em %s nao encontrado/ilegivel\n", entry, iwd);
+        fprintf(stderr, "t4port: '%s' in %s not found/unreadable\n", entry, iwd);
         return 1;
     }
     rc = run_viewer(raw, len, entry);
@@ -1035,7 +1035,7 @@ static int cmd_video(const char *path, const char *out_mp4, int play)
     const char *need = out_mp4 ? "ffmpeg" : (play ? "ffplay" : "ffprobe");
 
     if (!have_tool(need)) {
-        fprintf(stderr, "t4port: '%s' ausente - instale o ffmpeg para rodar Bink (.bik)\n", need);
+        fprintf(stderr, "t4port: '%s' missing - install ffmpeg to run Bink (.bik)\n", need);
         return 1;
     }
 
@@ -1093,11 +1093,11 @@ static int cmd_api(int argc, char **argv)
     }
 
     t4_gfx_config_path(path, sizeof(path));
-    printf("configuracao grafica (%s)\n"
-           "  atual: r_api=%s\n", path, t4_gfx_api_name(t4_gfx_config_get()));
+    printf("graphics configuration (%s)\n"
+           "  current: r_api=%s\n", path, t4_gfx_api_name(t4_gfx_config_get()));
     n = t4_gfx_detect(lines, 8);
     for (i = 0; i < n; i++) printf("  %s\n", lines[i]);
-    printf("dica: 't4port gfx' abre a janela de teste com a API escolhida\n");
+    printf("tip: 't4port gfx' opens the test window with the chosen API\n");
     return 0;
 }
 
@@ -1114,14 +1114,16 @@ static int cmd_gfx(int argc, char **argv)
                 fprintf(stderr, "t4port: gfx: API desconhecida '%s'\n", argv[i]);
                 return 1;
             }
-        } else if (strcmp(argv[i], "--segundos") == 0 && i + 1 < argc) {
+        } else if ((strcmp(argv[i], "--segundos") == 0 ||
+                    strcmp(argv[i], "--seconds") == 0) && i + 1 < argc) {
             seconds = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--janela") == 0 && i + 2 < argc) {
+        } else if ((strcmp(argv[i], "--janela") == 0 ||
+                    strcmp(argv[i], "--window") == 0) && i + 2 < argc) {
             w = atoi(argv[++i]);
             h = atoi(argv[++i]);
         } else {
-            fprintf(stderr, "uso: t4port gfx [--api auto|opengl|vulkan|opengles] "
-                    "[--segundos N] [--janela W H]\n");
+            fprintf(stderr, "usage: t4port gfx [--api auto|opengl|vulkan|opengles] "
+                    "[--seconds N] [--window W H]\n");
             return 1;
         }
     }
@@ -1129,7 +1131,7 @@ static int cmd_gfx(int argc, char **argv)
     if (w < 64 || h < 64) t4_gfx_window_size(&w, &h);
     if (w < 64) w = 64;
     if (h < 64) h = 64;
-    printf("gfx: janela %dx%d (r_mode do cfg; --janela sobrepoe)\n", w, h);
+    printf("gfx: window %dx%d (r_mode from cfg; --window overrides)\n", w, h);
 
     if (t4_gfx_run(a, w, h, seconds) != 0) {
         fprintf(stderr, "t4port: %s\n", t4_gfx_error());
@@ -1160,9 +1162,11 @@ static int cmd_world(int argc, char **argv)
                 return 1;
             }
             api_explicit = 1;
-        } else if (strcmp(argv[i], "--segundos") == 0 && i + 1 < argc) {
+        } else if ((strcmp(argv[i], "--segundos") == 0 ||
+                    strcmp(argv[i], "--seconds") == 0) && i + 1 < argc) {
             seconds = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--janela") == 0 && i + 2 < argc) {
+        } else if ((strcmp(argv[i], "--janela") == 0 ||
+                    strcmp(argv[i], "--window") == 0) && i + 2 < argc) {
             w = atoi(argv[++i]);
             h = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--shot") == 0 && i + 1 < argc) {
@@ -1174,16 +1178,16 @@ static int cmd_world(int argc, char **argv)
         } else if (!mapa) {
             mapa = argv[i];
         } else {
-            fprintf(stderr, "uso: t4port world <mapa | arquivo.ff> "
-                    "[--api auto|opengl|vulkan|opengles] [--segundos N] "
-                    "[--janela W H] [--shot saida.png] [--wire] [--walk-only]\n");
+            fprintf(stderr, "usage: t4port world <map | file.ff> "
+                    "[--api auto|opengl|vulkan|opengles] [--seconds N] "
+                    "[--window W H] [--shot out.png] [--wire] [--walk-only]\n");
             return 1;
         }
     }
     if (!mapa) {
-        fprintf(stderr, "uso: t4port world <mapa | arquivo.ff> "
-                "[--api auto|opengl|vulkan|opengles] [--segundos N] "
-                "[--janela W H] [--shot saida.png] [--wire] [--walk-only]\n");
+        fprintf(stderr, "usage: t4port world <map | file.ff> "
+                "[--api auto|opengl|vulkan|opengles] [--seconds N] "
+                "[--window W H] [--shot out.png] [--wire] [--walk-only]\n");
         return 1;
     }
     if (w < 64) w = 64;
@@ -1216,7 +1220,7 @@ static int cmd_world(int argc, char **argv)
             }
         }
         if (!found) {
-            fprintf(stderr, "t4port: world: mapa '%s' nao encontrado em %s/zone/\n",
+            fprintf(stderr, "t4port: world: map '%s' not found in %s/zone/\n",
                     mapa, gd);
             return 1;
         }
@@ -1236,7 +1240,7 @@ static int cmd_world(int argc, char **argv)
         t4_ff_free(&ff);
         return 1;
     }
-    printf("mundo: %s   (%s)\n", wv.name, path);
+    printf("world: %s   (%s)\n", wv.name, path);
     printf("  vertices: %u   indices: %u   triangulos: %u   surfaces: %d\n",
            wv.nverts, wv.nidx, wv.nidx / 3, wv.surfaces);
     printf("  limites: [%.0f %.0f %.0f] .. [%.0f %.0f %.0f]\n",
@@ -1267,8 +1271,8 @@ static int cmd_world(int argc, char **argv)
             t4_ff_free(&ff);
             return 1;
         }
-        fprintf(stderr, "t4port: world: api 'vulkan' (configurada) ainda nao "
-                        "tem renderizador de mundo - seguindo com OpenGL\n");
+        fprintf(stderr, "t4port: world: api 'vulkan' (configured) has no world "
+                        "renderer yet - falling back to OpenGL\n");
         a = T4_GFX_OPENGL;
     }
     if (t4_gfx_gl_world_run(w, h, seconds, a == T4_GFX_ES ? 1 : 0,
@@ -1337,7 +1341,7 @@ static int cmd_check(const char *argv0)
     if (sdl_rc == 0)
         printf("  SDL2 status         carregada\n");
     else
-        printf("  SDL2 status         INDISPONIVEL: %s\n", t4_sdl_error());
+        printf("  SDL2 status         UNAVAILABLE: %s\n", t4_sdl_error());
     if (sdl_rc == 0) t4_sdl_unload();
 
     {
@@ -1351,16 +1355,16 @@ static int cmd_check(const char *argv0)
         /* placas (qualquer fabricante) + driver NVIDIA */
         T4Gpu gp;
         t4_gapi_gpu(&gp);
-        printf("  placas (PCI)       %d NVIDIA / %d AMD / %d Intel%s\n",
+        printf("  cards (PCI)        %d NVIDIA / %d AMD / %d Intel%s\n",
                gp.nvidia, gp.amd, gp.intel,
-               gp.nouveau ? "  | nouveau em uso" : "");
+               gp.nouveau ? "  | nouveau in use" : "");
         if (gp.nvidia || gp.nv_gl[0] || gp.nv_module[0]) {
-            printf("  driver NVIDIA      modulo %s | GL %s | Vulkan %s | "
+            printf("  NVIDIA driver      module %s | GL %s | Vulkan %s | "
                    "ICD %s\n",
                    gp.nv_module[0] ? gp.nv_module : "?",
-                   gp.nv_gl[0] ? gp.nv_gl : "ausente",
-                   gp.nv_vk > 0 ? "sim" : (gp.nv_vk == 0 ? "nao" : "?"),
-                   gp.nv_icd ? "ativo" : "AUSENTE (t4port gpu --fix)");
+                   gp.nv_gl[0] ? gp.nv_gl : "missing",
+                   gp.nv_vk > 0 ? "yes" : (gp.nv_vk == 0 ? "no" : "?"),
+                   gp.nv_icd ? "active" : "MISSING (t4port gpu --fix)");
         }
     }
 
@@ -1372,15 +1376,15 @@ static int cmd_check(const char *argv0)
     if (gd && *gd) {
         char p[1200];
         int ni, nf;
-        printf("  dados do jogo      %s\n", gd);
+        printf("  game data          %s\n", gd);
         snprintf(p, sizeof(p), "%s/main", gd);
         ni = count_ext(p, ".iwd");
         snprintf(p, sizeof(p), "%s/zone", gd);
         nf = count_ext(p, ".ff");
         if (ni >= 0) printf("    .iwd             %d\n", ni);
-        if (nf >= 0) printf("    fastfiles        %d (recursivo, inclui zone/<idioma>/)\n", nf);
+        if (nf >= 0) printf("    fastfiles        %d (recursive, includes zone/<language>/)\n", nf);
     } else {
-        printf("  dados do jogo      NAO ENCONTRADOS (exporte T4_GAME_DIR=...)\n");
+        printf("  game data          NOT FOUND (export T4_GAME_DIR=...)\n");
     }
     return 0;
 }

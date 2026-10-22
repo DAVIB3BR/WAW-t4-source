@@ -142,7 +142,7 @@ int t4_assets_extract_rawfiles(const T4FF *ff, const T4FFAsset *assets,
 
     g_merr[0] = '\0';
     if (!ff || !assets || !out_dir || !*out_dir)
-        return mset("extract: parametros");
+        return mset("extract: parameters");
     if (mkdir_p(out_dir) != 0) return mfail("mkdir do diretorio de saida");
 
     for (i = 0; i < count; i++) {
@@ -169,7 +169,7 @@ int t4_assets_extract_rawfiles(const T4FF *ff, const T4FFAsset *assets,
 
     if (written) *written = ok;
     if (!ok && skipped) {
-        snprintf(g_merr, sizeof(g_merr), "extract: nenhum arquivo gravado (%d recusados)",
+        snprintf(g_merr, sizeof(g_merr), "extract: no file written (%d refused)",
                  skipped);
         return -1;
     }
@@ -244,30 +244,30 @@ int t4_mods_init(const char *root, const char *name)
 {
     char dir[1024], doc[1024];
     static const char txt[] =
-        "Mod do T4Port (Call of Duty: World at War, motor IW 3.0)\n"
+        "T4Port mod (Call of Duty: World at War, IW 3.0 engine)\n"
         "\n"
-        "Como funciona\n"
-        "  mods/<nome>/  e o OVERLAY: arquivos aqui tem prioridade sobre os\n"
-        "  .ff originais. Os scripts .gsc/.csc extraidos de todos os .ff\n"
-        "  ficam nas mesmas pastas dos originais (maps/, zombiemode/, ...).\n"
+        "How it works\n"
+        "  mods/<name>/  is the OVERLAY: files here take priority over the\n"
+        "  original .ff files. The .gsc/.csc scripts extracted from every .ff\n"
+        "  live in the same folders as the originals (maps/, zombiemode/, ...).\n"
         "\n"
-        "Comandos\n"
-        "  t4port mods unpack <nome>      extrai todos os scripts do jogo\n"
-        "  t4port mods list               lista os mods\n"
-        "  t4port mods which <caminho> --mod <nome> --search\n"
-        "                                 mostra de onde viria o arquivo\n"
-        "  t4port ff <arquivo.ff> -o dir  extrai so um .ff\n"
+        "Commands\n"
+        "  t4port mods unpack <name>      extracts all game scripts\n"
+        "  t4port mods list               lists the mods\n"
+        "  t4port mods which <path> --mod <name> --search\n"
+        "                                 shows where the file would come from\n"
+        "  t4port ff <file.ff> -o dir     extracts a single .ff\n"
         "\n"
-        "Ainda falta a VM de GSC para que o jogo EXECUTE esses scripts\n"
-        "(roadmap); hoje o lado de dados ja esta completo.\n";
+        "The GSC VM is still missing for the game to EXECUTE these scripts\n"
+        "(roadmap); today the data side is already complete.\n";
 
     g_merr[0] = '\0';
-    if (!root || !safe_mod(name)) return mset("mods init: nome invalido");
+    if (!root || !safe_mod(name)) return mset("mods init: invalid name");
 
     snprintf(dir, sizeof(dir), "%s/mods", root);
-    if (mkdir_p(dir) != 0) return mfail("mods init: cria mods/");
+    if (mkdir_p(dir) != 0) return mfail("mods init: create mods/");
     snprintf(dir, sizeof(dir), "%s/mods/%s", root, name);
-    if (mkdir_p(dir) != 0) return mfail("mods init: cria mods/<nome>");
+    if (mkdir_p(dir) != 0) return mfail("mods init: create mods/<name>");
 
     snprintf(doc, sizeof(doc), "%s/MOD.txt", dir);
     if (write_bytes(doc, txt, sizeof(txt) - 1) != 0)
@@ -285,7 +285,7 @@ int t4_mods_unpack(const char *root, const char *name)
     int nff, i, total = 0, ff_ok = 0;
 
     g_merr[0] = '\0';
-    if (!root || !safe_mod(name)) return mset("mods unpack: nome invalido");
+    if (!root || !safe_mod(name)) return mset("mods unpack: invalid name");
     if (t4_mods_init(root, name) != 0) return -1;
 
     nff = collect_ff(root, ffs, 512);
@@ -327,7 +327,7 @@ int t4_mods_unpack(const char *root, const char *name)
         t4_ff_free(&ff);
     }
 
-    printf("pronto: %d arquivos de %d/%d .ff em mods/%s/\n", total, ff_ok, nff, name);
+    printf("done: %d files from %d/%d .ff into mods/%s/\n", total, ff_ok, nff, name);
     if (!total) return mset("mods unpack: nenhum rawfile extraido");
     return 0;
 }
@@ -346,7 +346,7 @@ int t4_mods_list(const char *root)
     snprintf(dir, sizeof(dir), "%s/mods", root);
     d = opendir(dir);
     if (!d) {
-        printf("nenhum mod (diretorio %s nao existe - use: t4port mods init <nome>)\n",
+        printf("no mods (directory %s does not exist - use: t4port mods init <name>)\n",
                dir);
         return 0;
     }
@@ -356,7 +356,7 @@ int t4_mods_list(const char *root)
         if (e->d_name[0] == '.') continue;
         snprintf(p, sizeof(p), "%s/%s", dir, e->d_name);
         if (!is_dir(p)) continue;
-        printf("  %-24s %5d arquivos\n", e->d_name, count_files(p, 0));
+        printf("  %-24s %5d files\n", e->d_name, count_files(p, 0));
         n++;
     }
     closedir(d);
@@ -374,10 +374,10 @@ int t4_mods_which(const char *root, const char *name, const char *rel,
     int nff, i;
 
     g_merr[0] = '\0';
-    if (!root || !safe_rel(rel)) return mset("mods which: caminho invalido");
+    if (!root || !safe_rel(rel)) return mset("mods which: invalid path");
 
     if (name && *name) {
-        if (!safe_mod(name)) return mset("mods which: nome de mod invalido");
+        if (!safe_mod(name)) return mset("mods which: invalid mod name");
         snprintf(overlay, sizeof(overlay), "%s/mods/%s/%s", root, name, rel);
         if (is_file(overlay)) {
             printf("overlay   %s\n", overlay + (root ? strlen(root) : 0));
@@ -386,7 +386,7 @@ int t4_mods_which(const char *root, const char *name, const char *rel,
     }
 
     if (!search_ff) {
-        printf("nao esta no overlay%s%s%s\n", name && *name ? " (mods/" : "",
+        printf("not in the overlay%s%s%s\n", name && *name ? " (mods/" : "",
                name && *name ? name : "", name && *name ? "/)" : "");
         printf("dica: --search varre os .ff; mods unpack monta a copia editavel\n");
         return 1;
@@ -419,6 +419,6 @@ int t4_mods_which(const char *root, const char *name, const char *rel,
         t4_ff_free(&ff);
         if (hit) return 0;
     }
-    printf("nao encontrado em nenhum .ff\n");
+    printf("not found in any .ff\n");
     return 1;
 }

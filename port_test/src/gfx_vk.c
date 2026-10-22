@@ -320,7 +320,7 @@ int t4_gfx_vk_loader_check(char *info, size_t cap)
     uint32_t n = 0;
 
     if (!lib) {
-        snprintf(info, cap, "loader ausente (libvulkan)");
+        snprintf(info, cap, "loader missing (libvulkan)");
         return -1;
     }
     gipa = (PFN_vkGetInstanceProcAddr)vk_dlsym(lib, "vkGetInstanceProcAddr");
@@ -428,7 +428,7 @@ int t4_gfx_vk_run(int w, int h, int seconds, char *info, size_t info_cap)
 
     loader = vk_open_loader();
     if (!loader) {
-        snprintf(err, sizeof(err), "Vulkan: loader ausente (libvulkan)");
+        snprintf(err, sizeof(err), "Vulkan: loader missing (libvulkan)");
         goto fail;
     }
     gipa = (PFN_vkGetInstanceProcAddr)vk_dlsym(loader, "vkGetInstanceProcAddr");
@@ -463,7 +463,7 @@ int t4_gfx_vk_run(int w, int h, int seconds, char *info, size_t info_cap)
             goto fail;
         }
         if (t4_SDL_Vulkan_LoadLibrary(NULL) != 0) {
-            snprintf(err, sizeof(err), "Vulkan: SDL nao carregou o loader: %s",
+            snprintf(err, sizeof(err), "Vulkan: SDL did not load the loader: %s",
                      t4_SDL_GetError());
             goto fail;
         }
@@ -502,7 +502,7 @@ int t4_gfx_vk_run(int w, int h, int seconds, char *info, size_t info_cap)
         pCreateDevice = (void *)gipa(inst, "vkCreateDevice");
         if (!pDestroySurface || !pEnumPhys || !pGetQProps || !pGetSupport ||
             !pGetCaps || !pGetFormats || !pCreateDevice) {
-            snprintf(err, sizeof(err), "Vulkan: VK_KHR_surface indisponivel");
+            snprintf(err, sizeof(err), "Vulkan: VK_KHR_surface unavailable");
             goto fail;
         }
         if (t4_SDL_Vulkan_CreateSurface(win, inst, &surface) == 0) {
@@ -670,7 +670,7 @@ int t4_gfx_vk_run(int w, int h, int seconds, char *info, size_t info_cap)
         uint32_t chosen = 0;
 
         if (pGetCaps(phys, surface, &caps) != VK_SUCCESS) {
-            snprintf(err, sizeof(err), "Vulkan: surface capabilities falharam");
+            snprintf(err, sizeof(err), "Vulkan: surface capabilities failed");
             goto fail;
         }
         nfmt = 32;
@@ -711,7 +711,7 @@ int t4_gfx_vk_run(int w, int h, int seconds, char *info, size_t info_cap)
         n_imgs = 16;
         pGetSwapImgs(dev, swapchain, &n_imgs, imgs);
         if (n_imgs == 0 || n_imgs > 16) {
-            snprintf(err, sizeof(err), "Vulkan: imagens de swapchain invalidas");
+            snprintf(err, sizeof(err), "Vulkan: invalid swapchain images");
             goto fail;
         }
 
