@@ -43,8 +43,8 @@ static uint32_t r32(const uint8_t *p)
 int t4_iwi_parse(const uint8_t *data, size_t len, T4IwiInfo *out)
 {
     memset(out, 0, sizeof(*out));
-    if (len < T4_IWI_HEADER_SIZE) return fail("arquivo menor que o cabecalho (28 bytes)");
-    if (data[0] != 'I' || data[1] != 'W' || data[2] != 'i') return fail("magic \"IWi\" ausente");
+    if (len < T4_IWI_HEADER_SIZE) return fail("file smaller than the header (28 bytes)");
+    if (data[0] != 'I' || data[1] != 'W' || data[2] != 'i') return fail("magic \"IWi\" missing");
 
     out->version = data[3];
     out->format  = data[4];
@@ -58,7 +58,7 @@ int t4_iwi_parse(const uint8_t *data, size_t len, T4IwiInfo *out)
     out->payload_len = len - T4_IWI_HEADER_SIZE;
 
     if (out->width <= 0 || out->height <= 0 || out->width > 16384 || out->height > 16384)
-        return fail("dimensoes invalidas");
+        return fail("invalid dimensions");
 
     /* coerencia: o u32 repetido deve ser o tamanho do arquivo */
     if (out->file_size_field != (uint32_t)len) {
@@ -183,12 +183,12 @@ int t4_iwi_decode_rgba(const uint8_t *data, size_t len, uint8_t **rgba, int *w, 
     if (t4_iwi_parse(data, len, &info) < 0) return -1;
 
     dst = (uint8_t *)malloc((size_t)info.width * info.height * 4);
-    if (!dst) return fail("sem memoria");
+    if (!dst) return fail("out of memory");
 
     switch (info.format) {
     case T4_IWI_FORMAT_BGRA8: {           /* B,G,R,A -> R,G,B,A */
         size_t n = (size_t)info.width * info.height;
-        if (info.payload_len < n * 4) { free(dst); return fail("payload curto (BGRA8)"); }
+        if (info.payload_len < n * 4) { free(dst); return fail("short payload (BGRA8)"); }
         for (i = 0; i < (int)n; i++) {
             const uint8_t *s = info.payload + (size_t)i * 4;
             uint8_t *d = dst + (size_t)i * 4;
@@ -198,7 +198,7 @@ int t4_iwi_decode_rgba(const uint8_t *data, size_t len, uint8_t **rgba, int *w, 
     }
     case T4_IWI_FORMAT_A8L8: {            /* [0]=alpha, [1]=luminancia */
         size_t n = (size_t)info.width * info.height;
-        if (info.payload_len < n * 2) { free(dst); return fail("payload curto (A8L8)"); }
+        if (info.payload_len < n * 2) { free(dst); return fail("short payload (A8L8)"); }
         for (i = 0; i < (int)n; i++) {
             uint8_t a = info.payload[(size_t)i * 2];
             uint8_t l = info.payload[(size_t)i * 2 + 1];
@@ -209,7 +209,7 @@ int t4_iwi_decode_rgba(const uint8_t *data, size_t len, uint8_t **rgba, int *w, 
     }
     case T4_IWI_FORMAT_L8: {              /* 1 byte/pixel, alpha cheio */
         size_t n = (size_t)info.width * info.height;
-        if (info.payload_len < n) { free(dst); return fail("payload curto (L8)"); }
+        if (info.payload_len < n) { free(dst); return fail("short payload (L8)"); }
         for (i = 0; i < (int)n; i++) {
             uint8_t v = info.payload[i];
             uint8_t *d = dst + (size_t)i * 4;
@@ -225,7 +225,7 @@ int t4_iwi_decode_rgba(const uint8_t *data, size_t len, uint8_t **rgba, int *w, 
         bw = (info.width + 3) / 4;
         bh = (info.height + 3) / 4;
         if ((size_t)bw * bh * block_bytes > info.payload_len) {
-            snprintf(g_err, sizeof(g_err), "payload curto: %zu bytes para %dx%d (fmt %d)",
+            snprintf(g_err, sizeof(g_err), "short payload: %zu bytes for %dx%d (fmt %d)",
                      info.payload_len, info.width, info.height, info.format);
             free(dst);
             return -1;
@@ -269,7 +269,7 @@ int t4_iwi_decode_rgba(const uint8_t *data, size_t len, uint8_t **rgba, int *w, 
     }
     default:
         snprintf(g_err, sizeof(g_err),
-                 "formato IWI %d nao identificado (suportados: 1,3,4,11,12,13 = 99,1%% das texturas)",
+                 "unrecognized IWI format %d (supported: 1,3,4,11,12,13 = 99.1%% of the textures)",
                  info.format);
         free(dst);
         return -1;

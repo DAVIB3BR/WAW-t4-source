@@ -75,7 +75,7 @@ int t4_gfx_gl_lib_check(char *info, size_t cap)
             return 0;
         }
     }
-    snprintf(info, cap, "ausente (nenhum driver OpenGL)");
+    snprintf(info, cap, "missing (no OpenGL driver)");
     return -1;
 }
 
@@ -356,7 +356,7 @@ int t4_gfx_gl_run(int w, int h, int seconds, int es_mode,
 
     /* versao real do contexto */
     if (gl_load_common(&gl, miss, sizeof(miss)) != 0) {
-        snprintf(serr, sizeof(serr), "OpenGL: simbolo basico ausente: %s", miss);
+        snprintf(serr, sizeof(serr), "OpenGL: missing basic symbol: %s", miss);
         goto fail;
     }
     verstr = (const char *)gl.GetString(GL_VERSION);
@@ -423,7 +423,7 @@ int t4_gfx_gl_run(int w, int h, int seconds, int es_mode,
         uint32_t t0;
 
         if (gl_load_modern(&gl, miss, sizeof(miss)) != 0) {
-            snprintf(serr, sizeof(serr), "OpenGL: simbolo moderno ausente: %s", miss);
+            snprintf(serr, sizeof(serr), "OpenGL: missing modern symbol: %s", miss);
             goto fail;
         }
         prog = gl_build_program(&gl, es_mode ? vs_es : vs_glsl,
@@ -501,7 +501,7 @@ int t4_gfx_gl_run(int w, int h, int seconds, int es_mode,
     {
         uint32_t t0;
         if (gl_load_legacy(&gl, miss, sizeof(miss)) != 0) {
-            snprintf(serr, sizeof(serr), "OpenGL: simbolo legado ausente: %s", miss);
+            snprintf(serr, sizeof(serr), "OpenGL: missing legacy symbol: %s", miss);
             goto fail;
         }
         t4_SDL_GL_SetSwapInterval(1);
@@ -695,7 +695,7 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
     memset(&gl, 0, sizeof(gl));
     snprintf(info, info_cap, "?");
     if (!pos || !idx || !nverts || !nidx) {
-        snprintf(info, info_cap, "mundo: arrays vazios");
+        snprintf(info, info_cap, "world: empty arrays");
         return -1;
     }
     /* SDL obrigatorio: os ponteiros t4_SDL_* so existem apos o load
@@ -739,7 +739,7 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
         break;
     }
     if (!ctx) {
-        snprintf(serr, sizeof(serr), "mundo: nenhum contexto OpenGL (%s)",
+        snprintf(serr, sizeof(serr), "world: no OpenGL context (%s)",
                  win ? "sem contexto" : miss);
         snprintf(info, info_cap, "%s", serr);
         t4_SDL_Quit();
@@ -747,7 +747,7 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
         return -1;
     }
     if (gl_load_common(&gl, miss, sizeof(miss)) != 0) {
-        snprintf(serr, sizeof(serr), "mundo: simbolo basico ausente: %s", miss);
+        snprintf(serr, sizeof(serr), "world: missing basic symbol: %s", miss);
         goto fail;
     }
     verstr = (const char *)gl.GetString(GL_VERSION);
@@ -757,17 +757,17 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
         if (dig) sscanf(dig, "%d.%d", &maj, &min);
     }
     if (!(es_mode ? (maj >= 3) : (maj > 3 || (maj == 3 && min >= 3)))) {
-        snprintf(serr, sizeof(serr), "mundo: OpenGL 3.3+ ou ES 3.x necessario (tem %s)", verstr);
+        snprintf(serr, sizeof(serr), "world: OpenGL 3.3+ or ES 3.x required (has %s)", verstr);
         goto fail;
     }
     if (gl_load_modern(&gl, miss, sizeof(miss)) != 0) {
-        snprintf(serr, sizeof(serr), "mundo: simbolo moderno ausente: %s", miss);
+        snprintf(serr, sizeof(serr), "world: missing modern symbol: %s", miss);
         goto fail;
     }
     gl_load_world_syms(&gl);
     if (!gl.DrawElements || !gl.UniformMatrix4fv || !gl.ReadPixels ||
         !gl.Enable || !gl.DepthFunc || !gl.GetAttribLocation) {
-        snprintf(serr, sizeof(serr), "mundo: driver sem simbolos essenciais");
+        snprintf(serr, sizeof(serr), "world: driver lacks essential symbols");
         goto fail;
     }
     {
@@ -776,7 +776,7 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
                                 es_mode ? fs_es : fs_glsl,
                                 serr2, sizeof(serr2));
         if (!prog) {
-            snprintf(serr, sizeof(serr), "mundo: shaders: %s", serr2);
+            snprintf(serr, sizeof(serr), "world: shaders: %s", serr2);
             goto fail;
         }
     }
@@ -880,7 +880,7 @@ int t4_gfx_gl_world_run(int w, int h, int seconds, int es_mode,
                     if (t4_write_png(shot_png, flip, w, h) == 0)
                         printf("screenshot: %s\n", shot_png);
                     else
-                        printf("screenshot: falha ao gravar %s\n", shot_png);
+                        printf("screenshot: failed to write %s\n", shot_png);
                     free(flip);
                 }
                 free(rgba);

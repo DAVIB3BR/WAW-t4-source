@@ -61,7 +61,7 @@ if(T4PORT_SDL2_LINKED)
 endif()
 
 target_compile_options(t4port PRIVATE
-  $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wno-unused-parameter>
+  $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers>
 )
 if(T4PORT_WERROR)
   target_compile_options(t4port PRIVATE -Werror)

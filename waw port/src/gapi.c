@@ -492,7 +492,7 @@ static void nv_expected(const char *ver, char *out, size_t cap)
     else if (major < 470)
         snprintf(out, cap, "%d.xx: Vulkan 1.1", major);
     else if (major < 525)
-        snprintf(out, cap, "%d.xx: Vulkan 1.2 (branch legado)", major);
+        snprintf(out, cap, "%d.xx: Vulkan 1.2 (legacy branch)", major);
     else
         snprintf(out, cap, "%d.xx: Vulkan 1.3", major);
 }
@@ -700,10 +700,10 @@ int t4_gpu_cmd(int argc, char **argv)
         else if (strcmp(argv[i], "--unfix") == 0) do_unfix = 1;
         else if (strcmp(argv[i], "--help") == 0) {
             printf("t4port gpu [--fix|--unfix]\n"
-                   "  (sem argumentos) relatorio de placas e drivers\n"
-                   "  --fix     cria o ICD Vulkan NVIDIA do usuario (sem root)\n"
-                   "  --unfix   remove o ICD criado por --fix\n"
-                   "  T4_GPU=nvidia|amd|intel antes do comando força a GPU\n");
+                   "  (no arguments) report of cards and drivers\n"
+                   "  --fix     creates the user NVIDIA Vulkan ICD (no root)\n"
+                   "  --unfix   removes the ICD created by --fix\n"
+                   "  T4_GPU=nvidia|amd|intel before the command forces the GPU\n");
             return 0;
         }
     }
@@ -711,87 +711,86 @@ int t4_gpu_cmd(int argc, char **argv)
     if (do_unfix) {
         int r = t4_gapi_nvidia_icd(0);
         printf("%s\n", r > 0
-                   ? "ICD NVIDIA removido (Vulkan volta ao padrao no proximo inicio)"
-                   : "nada a remover (ICD NVIDIA nao existia)");
+                   ? "NVIDIA ICD removed (Vulkan back to default on next start)"
+                   : "nothing to remove (NVIDIA ICD did not exist)");
         return 0;
     }
 
     t4_gapi_gpu(&g);
 
-    printf("placas (PCI): %d NVIDIA, %d AMD, %d Intel\n",
+    printf("cards (PCI): %d NVIDIA, %d AMD, %d Intel\n",
            g.nvidia, g.amd, g.intel);
     if (!g.nvidia && !g.amd && !g.intel)
-        printf("  (contagem PCI disponivel apenas no Linux nesta versao)\n");
+        printf("  (PCI count available on Linux only in this version)\n");
     if (g.nouveau)
-        printf("kernel nouveau em uso (driver aberto NVIDIA)\n");
+        printf("nouveau kernel driver in use (open NVIDIA driver)\n");
 
     if (g.nvidia || g.nv_gl[0] || g.nv_module[0]) {
-        printf("driver NVIDIA:\n");
-        printf("  modulo kernel   %s\n",
+        printf("NVIDIA driver:\n");
+        printf("  kernel module   %s\n",
                g.nv_module[0] ? g.nv_module
-                              : "nao encontrado (/proc/driver/nvidia)");
-        printf("  libs userspace  %s\n",
+                              : "not found (/proc/driver/nvidia)");
+        printf("  user libs       %s\n",
                g.nv_user[0] ? g.nv_user : "?");
         {
             char exp[72];
             nv_expected(g.nv_module[0] ? g.nv_module : g.nv_user,
                         exp, sizeof(exp));
-            printf("  faixa do driver %s | real: %s\n", exp,
-                   g.nv_vk > 0 ? "sim" : (g.nv_vk == 0 ? "nao" : "?"));
+            printf("  driver range %s | actual: %s\n", exp,
+                   g.nv_vk > 0 ? "yes" : (g.nv_vk == 0 ? "no" : "?"));
         }
         printf("  OpenGL          %s\n",
-               g.nv_gl[0] ? g.nv_gl : "libGLX_nvidia AUSENTE");
+               g.nv_gl[0] ? g.nv_gl : "libGLX_nvidia MISSING");
         printf("  Vulkan          %s\n",
-               g.nv_vk > 0 ? "SIM (driver exporta vk_icd)"
-                           : (g.nv_vk == 0 ? "NAO - este driver nao tem Vulkan"
-                                           : "desconhecido neste SO"));
+               g.nv_vk > 0 ? "YES (driver exports vk_icd)"
+                           : (g.nv_vk == 0 ? "NO - this driver has no Vulkan"
+                                           : "unknown on this OS"));
         printf("  ICD (vulkan)    %s\n",
-               g.nv_icd ? "ativo" : "ausente");
+               g.nv_icd ? "active" : "missing");
         if (g.nv_icd && !g.nv_gl[0])
-            printf("  (ICD restante sem driver - limpe com --unfix)\n");
+            printf("  (leftover ICD without driver - clean with --unfix)\n");
 
         if (do_fix) {
             int r = t4_gapi_nvidia_icd(1);
             switch (r) {
             case 1:
-                printf("  ICD criado: ~/.local/share/vulkan/icd.d/"
+                printf("  ICD created: ~/.local/share/vulkan/icd.d/"
                        "nvidia_icd.json\n");
-                printf("  pronto: o Vulkan ja enxerga a placa NVIDIA "
-                       "(remover: --unfix)\n");
+                printf("  done: Vulkan now sees the NVIDIA card "
+                       "(remove: --unfix)\n");
                 break;
             case 0:
-                printf("  ICD ja existia (nada a fazer)\n");
+                printf("  ICD already existed (nothing to do)\n");
                 break;
             case -2:
-                printf("  recusado: o driver NVIDIA instalado nao tem "
-                       "Vulkan (atualize o driver)\n");
+                printf("  refused: the installed NVIDIA driver has no "
+                       "Vulkan (update the driver)\n");
                 break;
             case -3:
-                printf("  --fix nao se aplica neste SO\n");
+                printf("  --fix does not apply on this OS\n");
                 break;
             default:
-                printf("  erro ao criar o ICD (verifique ~/.local)\n");
+                printf("  error creating the ICD (check ~/.local)\n");
             }
         } else if (!g.nv_icd && g.nv_vk > 0) {
-            printf("  -> Vulkan da NVIDIA nao registrado; ative com: "
+            printf("  -> NVIDIA Vulkan not registered; enable with: "
                    "t4port gpu --fix\n");
         }
     } else {
-        printf("driver NVIDIA nao encontrado neste sistema\n");
+        printf("NVIDIA driver not found on this system\n");
 #ifdef __APPLE__
-        printf("  (macOS: NVIDIA so funciona ate o 10.13 High Sierra com web "
-               "driver;\n   a partir do Mojave nao ha driver oficial - a GPU, "
-               "se existir, nao e usavel\n   e o jogo roda pelo OpenGL do "
-               "proprio sistema)\n");
+        printf("  (macOS: NVIDIA works only up to 10.13 High Sierra with the "
+               "web\n   driver; from Mojave on there is no official driver - "
+               "the GPU,\n   if present, is unusable\n   and the game runs on "
+               "the system's own OpenGL)\n");
 #elif defined(__FreeBSD__)
-        printf("  (FreeBSD: com o x11/nvidia-driver instalado a placa e as "
-               "libs\n   aparecem aqui; a contagem PCI precisa do sysfs do "
-               "Linux)\n");
+        printf("  (FreeBSD: with x11/nvidia-driver installed the card and "
+               "libs\n   show up here; the PCI count needs the Linux sysfs)\n");
 #endif
     }
 
-    printf("forcar GPU: T4_GPU=nvidia|amd|intel t4port gfx --api vulkan\n");
-    printf("  (T4_GPU=nvidia = PRIME/GL na NVIDIA + so o ICD dela no "
+    printf("force GPU: T4_GPU=nvidia|amd|intel t4port gfx --api vulkan\n");
+    printf("  (T4_GPU=nvidia = PRIME/GL on the NVIDIA + only its ICD in "
            "Vulkan)\n");
     return 0;
 }

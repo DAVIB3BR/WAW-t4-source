@@ -70,11 +70,11 @@ int t4_iwd_open(T4Iwd *z, const char *path)
     g_err[0] = '\0';
 
     z->fp = fopen(path, "rb");
-    if (!z->fp) return fail("nao foi possivel abrir");
+    if (!z->fp) return fail("could not open");
 
     fseek(z->fp, 0, SEEK_END);
     fsize = ftell(z->fp);
-    if (fsize < 22) { fclose(z->fp); z->fp = NULL; return fail("arquivo curto demais"); }
+    if (fsize < 22) { fclose(z->fp); z->fp = NULL; return fail("file too short"); }
 
     snprintf(z->path, sizeof(z->path), "%s", path);
 
@@ -86,7 +86,7 @@ int t4_iwd_open(T4Iwd *z, const char *path)
         if (!tail || rd(z->fp, tail, tail_len, tail_off) != 0) {
             free(tail);
             fclose(z->fp); z->fp = NULL;
-            return fail("falha lendo o fim do arquivo");
+            return fail("failed reading the end of the file");
         }
         for (i = tail_len - 22; i < tail_len; i--) {
             if (r32(tail + i) == 0x06054b50u) { eocd = tail_off + (long)i; break; }
@@ -99,11 +99,11 @@ int t4_iwd_open(T4Iwd *z, const char *path)
         }
         free(tail);
     }
-    if (eocd < 0) { fclose(z->fp); z->fp = NULL; return fail("EOCD (zip) nao encontrado"); }
+    if (eocd < 0) { fclose(z->fp); z->fp = NULL; return fail("EOCD (zip) not found"); }
 
     {
         uint8_t h[22];
-        if (rd(z->fp, h, 22, eocd) != 0) { fclose(z->fp); z->fp = NULL; return fail("EOCD ilegivel"); }
+        if (rd(z->fp, h, 22, eocd) != 0) { fclose(z->fp); z->fp = NULL; return fail("EOCD unreadable"); }
         n_entries = r16(h + 10);
         cd_size   = r32(h + 12);
         cd_off    = r32(h + 16);
@@ -113,11 +113,11 @@ int t4_iwd_open(T4Iwd *z, const char *path)
     if (!cd || rd(z->fp, cd, cd_size, (long)cd_off) != 0) {
         free(cd);
         fclose(z->fp); z->fp = NULL;
-        return fail("central directory ilegivel");
+        return fail("central directory unreadable");
     }
 
     z->entries = (T4ZipEntry *)calloc(n_entries ? n_entries : 1, sizeof(T4ZipEntry));
-    if (!z->entries) { free(cd); fclose(z->fp); z->fp = NULL; return fail("sem memoria"); }
+    if (!z->entries) { free(cd); fclose(z->fp); z->fp = NULL; return fail("out of memory"); }
 
     /* itera as entradas do central directory */
     {
@@ -127,7 +127,7 @@ int t4_iwd_open(T4Iwd *z, const char *path)
             uint16_t nlen, elen, clen;
             if (r32(e) != 0x02014b50u) {
                 g_err[0] = '\0';
-                snprintf(g_err, sizeof(g_err), "assinatura de entrada invalida em %zu", off);
+                snprintf(g_err, sizeof(g_err), "assinatura de invalid entry em %zu", off);
                 break;
             }
             nlen = r16(e + 28);
@@ -198,20 +198,20 @@ int t4_iwd_read(const T4Iwd *z, const T4ZipEntry *e, uint8_t **out, size_t *out_
 
     *out = NULL;
     *out_len = 0;
-    if (!z->fp || !e) return fail("entrada invalida");
+    if (!z->fp || !e) return fail("invalid entry");
 
-    if (rd(z->fp, lh, 30, (long)e->local_offset) != 0) return fail("local header ilegivel");
-    if (r32(lh) != 0x04034b50u) return fail("assinatura local invalida");
+    if (rd(z->fp, lh, 30, (long)e->local_offset) != 0) return fail("local header unreadable");
+    if (r32(lh) != 0x04034b50u) return fail("invalid local signature");
     nlen = r16(lh + 26);
     elen = r16(lh + 28);
     data_off = (long)e->local_offset + 30 + nlen + elen;
 
     comp = (uint8_t *)malloc(e->comp_size ? e->comp_size : 1);
-    if (!comp) return fail("sem memoria");
-    if (rd(z->fp, comp, e->comp_size, data_off) != 0) { free(comp); return fail("falha lendo dados"); }
+    if (!comp) return fail("out of memory");
+    if (rd(z->fp, comp, e->comp_size, data_off) != 0) { free(comp); return fail("failed reading data"); }
 
     dst = (uint8_t *)malloc(e->uncomp_size ? e->uncomp_size : 1);
-    if (!dst) { free(comp); return fail("sem memoria"); }
+    if (!dst) { free(comp); return fail("out of memory"); }
 
     if (e->method == 0) {
         memcpy(dst, comp, e->uncomp_size);
@@ -229,7 +229,7 @@ int t4_iwd_read(const T4Iwd *z, const T4ZipEntry *e, uint8_t **out, size_t *out_
         free(comp);
         if (rc != Z_STREAM_END && !(rc == Z_OK && strm.avail_out == 0)) {
             free(dst);
-            return fail("inflate truncado");
+            return fail("truncated inflate");
         }
         *out_len = e->uncomp_size - strm.avail_out;
         *out = dst;
@@ -237,7 +237,7 @@ int t4_iwd_read(const T4Iwd *z, const T4ZipEntry *e, uint8_t **out, size_t *out_
     } else {
         free(comp);
         free(dst);
-        return fail("metodo de compressao nao suportado");
+        return fail("unsupported compression method");
     }
 
     free(comp);

@@ -1,0 +1,50 @@
+# ---------------------------------------------------------------------------
+# t4port — git hygiene
+#
+# Two hard rules:
+#   1. never commit Activision/game data (.ff, .iwd, .iwi, .gsc, CoDWaW*.exe,
+#      the sample textures in re/samples/) — the engine reads it from a local
+#      copy of the game, it is not redistributable;
+#   2. never commit build caches / toolchains / extracted sysroots.
+# ---------------------------------------------------------------------------
+
+# --- game data (Activision) — NEVER publish ------------------------------
+*.ff
+*.iwd
+*.iwi
+*.gsc
+*.csc
+*.bik
+CoDWaW*.exe
+plutonium*.exe
+re/samples/
+
+# --- build outputs (rebuildable; per-OS binaries in dist/ are committed) --
+build/
+**/obj/
+*.o
+*.obj
+source_original/build/
+
+# --- toolchains, sysroots, package caches ---------------------------------
+tools/.zig/
+freebsd/.sysroot/
+windows/.sysroot/
+.zlib/
+.zlib-freebsd/
+base.txz
+*.tar.xz
+*.tar.gz
+.flatpak/
+.flatpak-builder/
+*.flatpak
+
+# --- editors / OS noise ---------------------------------------------------
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# --- python bytecode caches ------------------------------------------------
+__pycache__/
+*.pyc

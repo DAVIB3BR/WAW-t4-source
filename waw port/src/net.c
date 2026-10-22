@@ -177,7 +177,7 @@ int t4_lan_host(const T4LanInfo *info, int port,
     g_nerr[0] = '\0';
     g_stop = 0;
     if (!info || port <= 0 || port > 65535)
-        return nfail("lan host: parametros invalidos");
+        return nfail("lan host: invalid parameters");
     if (sock_start() != 0) return nsock("WSAStartup", sock_errno);
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -285,14 +285,14 @@ int t4_lan_discover(int port, int wait_ms, const char *only_ip,
     g_nerr[0] = '\0';
     if (out) *out = NULL;
     if (count) *count = 0;
-    if (port <= 0 || port > 65535 || wait_ms < 0) return nfail("lan discover: parametros");
+    if (port <= 0 || port > 65535 || wait_ms < 0) return nfail("lan discover: parameters");
     if (sock_start() != 0) return nsock("WSAStartup", sock_errno);
 
     /* Alvos: alvo explicito, senao broadcast da LAN + loopback. */
     if (only_ip && only_ip[0]) {
         struct in_addr a;
         if (inet_pton(AF_INET, only_ip, &a) != 1)
-            return nfail("lan discover: --to invalido");
+            return nfail("lan discover: invalid --to");
         push_target(targets, &nt, a.s_addr, port);
     } else {
         push_target(targets, &nt, htonl(INADDR_BROADCAST), port);
@@ -347,7 +347,7 @@ int t4_lan_discover(int port, int wait_ms, const char *only_ip,
 
     res = (T4LanHost *)calloc(T4LAN_MAX_HOSTS, sizeof(T4LanHost));
     if (!res) {
-        int r = nfail("sem memoria");
+        int r = nfail("out of memory");
         sock_close(fd);
         return r;
     }
